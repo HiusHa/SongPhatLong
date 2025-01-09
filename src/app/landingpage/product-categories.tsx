@@ -4,7 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import { motion, useInView } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { elegantSlideIn } from "../../../../utils/animations";
+import { elegantSlideIn } from "../../../utils/animations";
 
 export function ProductCategories() {
   const sectionRef = useRef(null);

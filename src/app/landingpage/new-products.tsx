@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { motion, useAnimation, Variant, Variants } from "framer-motion";
+import { motion, useAnimation, Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -31,7 +31,7 @@ export function NewProducts() {
   }, []);
 
   useEffect(() => {
-    controls.start((i: number) => ({
+    controls.start((i) => ({
       opacity: 1,
       y: 0,
       transition: { delay: i * 0.1, duration: 0.5 },
@@ -40,15 +40,15 @@ export function NewProducts() {
 
   const cardVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
-    visible: (i: number): Variant => ({
+    visible: {
       opacity: 1,
       y: 0,
       transition: {
-        delay: i * 0.1,
+        delay: 0.1,
         duration: 0.5,
         ease: "easeOut",
       },
-    }),
+    },
   };
 
   return (

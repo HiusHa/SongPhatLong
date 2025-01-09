@@ -4,7 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import { motion, useInView } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { elegantSlideIn } from "../../../../utils/animations";
+import { elegantSlideIn } from "../../../utils/animations";
 
 export function FeaturedProjects() {
   const sectionRef = useRef(null);

@@ -1,10 +1,10 @@
 "use client";
 
-import { HeroSection } from "./components/landingpage/hero-section";
-import { CTASection } from "./components/landingpage/cta-section";
-import { ProductCategories } from "./components/landingpage/product-categories";
-import { NewProducts } from "./components/landingpage/new-products";
-import { FeaturedProjects } from "./components/landingpage/featured-projects";
+import { HeroSection } from "./landingpage/hero-section";
+import { CTASection } from "./landingpage/cta-section";
+import { ProductCategories } from "./landingpage/product-categories";
+import { NewProducts } from "./landingpage/new-products";
+import { FeaturedProjects } from "./landingpage/featured-projects";
 
 export default function Home() {
   return (

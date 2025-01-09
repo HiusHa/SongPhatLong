@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import Image from "next/image";
 import { motion, useInView } from "framer-motion";
-import { elegantSlideIn } from "../../../../utils/animations";
+import { elegantSlideIn } from "../../../utils/animations";
 
 export function CTASection() {
   const sectionRef = useRef(null);

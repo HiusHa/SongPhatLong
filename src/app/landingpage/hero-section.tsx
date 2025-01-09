@@ -1,9 +1,9 @@
-'use client'
+"use client";
 
-import Image from 'next/image'
-import { motion, useScroll, useTransform } from 'framer-motion'
-import { Button } from "@/components/ui/button"
-import { scrollAnimation, wiggle } from '../../../../utils/animations';
+import Image from "next/image";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { scrollAnimation, wiggle } from "../../../utils/animations";
 
 export function HeroSection() {
   const { scrollYProgress } = useScroll();
@@ -33,6 +33,5 @@ export function HeroSection() {
         </motion.div>
       </div>
     </motion.section>
-  )
+  );
 }
-
