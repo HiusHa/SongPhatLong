@@ -15,7 +15,7 @@ export function ServiceCard({ title, description, link }: ServiceCardProps) {
         href={link}
         className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center"
       >
-        Explore Now
+        Khám phá ngay
         <svg
           className="w-4 h-4 ml-1"
           fill="none"

@@ -1,6 +1,6 @@
-"use client";
-import { motion } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
+import { motion } from "framer-motion";
 
 interface Product {
   id: number;
@@ -16,39 +16,43 @@ interface ProductCardProps {
 
 export function ProductCard({ products }: ProductCardProps) {
   return (
-    <motion.div
-      className="rounded-lg overflow-hidden"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
-        {products.map((product) => (
-          <motion.div
-            key={product.id}
-            className="flex flex-col space-y-2 bg-white shadow-md rounded-lg overflow-hidden p-4"
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="aspect-[4/3] w-full overflow-hidden rounded-md bg-gray-100">
-              <Image
-                width={300}
-                height={400}
-                src={product.image}
-                alt={product.title}
-                className="h-full w-full object-cover object-center"
-              />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {products.map((product, index) => (
+        <motion.div
+          key={product.id}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: index * 0.2 }} // Increased duration and delay
+        >
+          <Link href={`/products/${product.id}`} className="group">
+            <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              <motion.div
+                className="relative aspect-square"
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.5 }} // Increased from 0.2 to 0.5
+              >
+                <Image
+                  src={product.image}
+                  alt={product.title}
+                  fill
+                  className="object-cover"
+                />
+              </motion.div>
+              <div className="p-4">
+                <h3 className="font-semibold text-lg mb-2 group-hover:text-blue-600 line-clamp-2">
+                  {product.title}
+                </h3>
+                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                  {product.description}
+                </p>
+                <p className="text-lg font-bold text-red-600">
+                  {product.price.toLocaleString("vi-VN")}₫
+                </p>
+              </div>
             </div>
-            <h3 className="text-sm font-medium text-gray-900">
-              {product.title}
-            </h3>
-            <p className="text-sm text-gray-500">{product.description}</p>
-            <p className="text-sm font-medium text-red-600">
-              {product.price.toLocaleString("vi-VN")}₫
-            </p>
-          </motion.div>
-        ))}
-      </div>
-    </motion.div>
+          </Link>
+        </motion.div>
+      ))}
+    </div>
   );
 }

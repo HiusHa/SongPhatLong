@@ -20,7 +20,7 @@ export function Header() {
 
   const navItems = [
     { href: "/", label: "Trang chủ" },
-    { href: "/gioi-thieu", label: "Giới thiệu" },
+    { href: "/about", label: "Giới thiệu" },
     { href: "/products", label: "Sản phẩm" },
     { href: "/services", label: "Dịch vụ" },
     { href: "/projects", label: "Dự án" },
@@ -54,7 +54,7 @@ export function Header() {
               className="rounded-full"
             />
             <span className="text-[#0066FF] text-xl font-bold">
-              PHỤNG SỰ ĐỂ DẪN ĐẦU
+              BẢO VỆ AN TOÀN, KIẾN TẠO GIÁ TRỊ
             </span>
           </Link>
 

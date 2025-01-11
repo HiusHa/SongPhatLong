@@ -12,16 +12,16 @@ export function FeaturedProjects() {
 
   const projects = [
     {
-      title: "Dự án phát triển đô thị thông minh",
+      title: "Dự án DANAPHA TOWER",
       description:
-        "Ứng dụng công nghệ IoT và AI để tối ưu hóa quản lý đô thị, nâng cao chất lượng cuộc sống cho cư dân.",
-      image: "/placeholder.svg?height=400&width=600",
+        "Cung cấp thiết bị và giải pháp PCCC cho Danapha Tower, công trình cao 15 tầng nổi và 3 tầng hầm, xây dựng trên diện tích đất 616,8 m2 với diện tích xây dựng khoảng 7.780 m2.",
+      image: "/Images/project1.jpg",
     },
     {
-      title: "Hệ thống quản lý năng lượng tái tạo",
+      title: "Dự án KHÁCH SẠN GARRYA",
       description:
-        "Giải pháp tích hợp cho việc quản lý và tối ưu hóa sử dụng năng lượng tái tạo trong các tòa nhà thương mại.",
-      image: "/placeholder.svg?height=400&width=600",
+        "Chúng tôi tự hào cung cấp giải pháp và thiết bị PCCC cho khách sạn Garrya Đà Nẵng, tọa lạc trên 1.042,9 m2 đất với quy mô 2 tầng hầm và 9 tầng nổi. Công trình được thiết kế hiện đại, đáp ứng đầy đủ các tiêu chuẩn an toàn và chất lượng cao nhất.",
+      image: "/Images/project2.jpg",
     },
   ];
 
@@ -29,7 +29,7 @@ export function FeaturedProjects() {
     <section ref={sectionRef} className="py-24">
       <div className="container mx-auto px-4">
         <h2 className="text-center text-3xl font-bold text-[#0066FF] mb-12">
-          Dự Án nổi bật
+          DỰ ÁN NỔI BẬT
         </h2>
         <div className="space-y-16">
           {projects.map((project, index) => (
@@ -57,7 +57,7 @@ export function FeaturedProjects() {
                       src={project.image}
                       alt={project.title}
                       layout="fill"
-                      objectFit="cover"
+                      objectFit="fill"
                       className="rounded-lg"
                     />
                   </div>

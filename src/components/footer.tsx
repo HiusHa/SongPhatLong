@@ -128,9 +128,9 @@ export function Footer() {
           {/* Map */}
           <div className="lg:col-span-3">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3323.846309437662!2d-86.81196688479231!3d33.57183808073421!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88891b9d4f7e58cd%3A0x3bba5c81c5e71218!2sBirmingham%2C%20AL%2C%20USA!5e0!3m2!1sen!2s!4v1647907800000!5m2!1sen!2s"
-              width="110%"
-              height="300"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3834.9509728157873!2d108.2298502755328!3d16.01606748465589!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31421a018e76e685%3A0xec9a6d25a07c118f!2zODQgSOG7kyBQaGkgVMOtY2gsIEhvw6AgWHXDom4sIEPhuqltIEzhu4csIMSQw6AgTuG6tW5nIDUwMDAwLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2s!4v1736405340790!5m2!1svi!2s"
+              width="350"
+              height="450"
               style={{ border: 0 }}
               allowFullScreen
               loading="lazy"
@@ -143,7 +143,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-8 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-gray-600 mb-4 md:mb-0">
-            ©2022 Company Name. All rights reserved
+            ©2025 SONG PHÁT LONG. All rights reserved
           </p>
           <div className="flex items-center gap-4">
             <Link href="#" className="text-gray-600 hover:text-[#0066FF]">
