@@ -1,37 +1,65 @@
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { StrapiService } from "../types/service";
+import Image from "next/image";
 
 interface ServiceCardProps {
-  title: string;
-  description: string;
-  link: string;
+  service: StrapiService;
 }
 
-export function ServiceCard({ title, description, link }: ServiceCardProps) {
+export function ServiceCard({ service }: ServiceCardProps) {
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    console.log("Service data:", service);
+    console.log("Service image data:", service.serviceImage);
+  }, [service]);
+
+  const getImageUrl = () => {
+    if (imageError || !service?.serviceImage?.[0]?.url) {
+      return `/placeholder.svg?height=300&width=300&text=${encodeURIComponent(
+        service?.serviceName
+      )}`;
+    }
+
+    return `${service.serviceImage[0].url}`;
+  };
+
+  const getImageAlt = () => {
+    return service?.serviceImage?.[0]?.alternativeText || service?.serviceName;
+  };
+
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm">
-      <h2 className="text-xl font-semibold mb-2">{title}</h2>
-      <p className="text-gray-600 mb-4">{description}</p>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.8 }}
+      className="h-full"
+    >
       <Link
-        href={link}
-        className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center"
+        href={`/services/${service.documentId}`}
+        className="group block h-full"
       >
-        Khám phá ngay
-        <svg
-          className="w-4 h-4 ml-1"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
+        <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+          <div className="relative aspect-square w-full">
+            <Image
+              src={getImageUrl() || "/placeholder.svg"}
+              alt={getImageAlt()}
+              layout="fill"
+              objectFit="cover"
+              className="transition-transform duration-300 group-hover:scale-105"
+              onError={() => setImageError(true)}
+              unoptimized
+            />
+          </div>
+          <div className="p-4">
+            <h3 className="font-semibold text-lg text-center group-hover:text-blue-600">
+              {service.serviceName}
+            </h3>
+          </div>
+        </div>
       </Link>
-      <div className="mt-4 h-40 bg-blue-100 rounded-lg"></div>
-    </div>
+    </motion.div>
   );
 }

@@ -4,8 +4,8 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
+  title: "Song Phát Long",
+  description: "Bảo vệ an toàn, Kiến tạo giá trị",
 };
 
 export default function RootLayout({

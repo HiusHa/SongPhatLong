@@ -1,110 +1,149 @@
 "use client";
 
-import { Slider } from "@/components/ui/slider";
-import { useState } from "react";
-import { motion } from "framer-motion";
-
-const categories = [
-  "Thiết Bị Bảo Hộ Cá Nhân",
-  "Dụng Cụ Chữa Cháy",
-  "Thiết Bị Cứu Hộ",
-  "Thiết Bị Thông Tin",
-  "Vật Tư Y Tế",
-  "Thiết Bị Huấn Luyện",
-  "Phòng Cháy",
-];
+import * as React from "react";
+import Image from "next/image";
+import { Loader2 } from "lucide-react";
+import * as Slider from "@radix-ui/react-slider";
+import { cn } from "@/lib/utils";
+import api from "@/app/_utils/globalApi";
 
 interface SidebarProps {
   onCategoryChange: (categories: string[]) => void;
-  onPriceChange: (priceRange: number[]) => void;
+  onPriceChange?: (priceRange: number[]) => void;
+}
+
+interface Category {
+  id: number;
+  documentId: string;
+  name: string;
+  Icon: {
+    data: {
+      attributes: {
+        url: string;
+      };
+    } | null;
+  };
 }
 
 export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState([0, 3000]);
+  const [categories, setCategories] = React.useState<Category[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [selectedCategories, setSelectedCategories] = React.useState<string[]>(
+    []
+  );
+  const [priceRange, setPriceRange] = React.useState<number[]>([0, 100]);
 
-  const handleCategoryChange = (category: string) => {
-    const updatedCategories = selectedCategories.includes(category)
-      ? selectedCategories.filter((c) => c !== category)
-      : [...selectedCategories, category];
-    setSelectedCategories(updatedCategories);
-    onCategoryChange(updatedCategories);
+  React.useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await api.getCategories();
+        setCategories(response.data.data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  const handleCategoryChange = (categoryId: string) => {
+    const newCategories = selectedCategories.includes(categoryId)
+      ? selectedCategories.filter((id) => id !== categoryId)
+      : [...selectedCategories, categoryId];
+
+    setSelectedCategories(newCategories);
+    onCategoryChange(newCategories);
   };
 
   const handlePriceChange = (newPriceRange: number[]) => {
     setPriceRange(newPriceRange);
-    onPriceChange(newPriceRange);
+    if (onPriceChange) {
+      onPriceChange(newPriceRange);
+    }
   };
 
   return (
-    <motion.div
-      className="space-y-6"
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 1, delay: 0.5 }} // Increased duration and added delay
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.8 }} // Increased delay and duration
-      >
-        <h3 className="text-lg font-semibold mb-4">Danh Mục</h3>
-        <div className="space-y-3">
-          {categories.map((category, index) => (
-            <motion.label
-              key={category}
-              className="flex items-center space-x-2"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1 + index * 0.2, duration: 0.5 }} // Increased delay and duration
-            >
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                checked={selectedCategories.includes(category)}
-                onChange={() => handleCategoryChange(category)}
-              />
-              <span className="text-sm">{category}</span>
-            </motion.label>
-          ))}
-        </div>
-      </motion.div>
+    <div className="w-64 p-4 border-r min-h-screen">
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Danh mục</h2>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-20">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-2">
+              {categories.map((category) => {
+                const isSelected = selectedCategories.includes(
+                  category.documentId
+                );
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.5, duration: 0.8 }} // Increased delay and duration
-      >
-        <h3 className="text-lg font-semibold mb-4">Lọc Theo Giá</h3>
-        <div className="px-2">
-          <Slider
-            defaultValue={[0, 3000]}
-            max={3000}
-            step={10}
-            value={priceRange}
-            onValueChange={handlePriceChange}
-            className="my-6"
-          />
-          <div className="flex items-center justify-between">
-            <motion.span
-              className="text-sm text-gray-600"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 2, duration: 0.5 }} // Increased delay and duration
+                return (
+                  <label
+                    key={category.documentId}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer",
+                      isSelected && "bg-gray-100 font-medium"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleCategoryChange(category.documentId)}
+                      className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                    />
+                    {category.Icon?.data && (
+                      <div className="relative w-5 h-5 flex-shrink-0">
+                        <Image
+                          src={
+                            category.Icon.data.attributes.url ||
+                            "/placeholder.svg"
+                          }
+                          alt={category.name}
+                          layout="fill"
+                          objectFit="contain"
+                        />
+                      </div>
+                    )}
+                    <span className="truncate">{category.name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Giá</h2>
+          <div className="space-y-4">
+            <Slider.Root
+              className="relative flex items-center select-none touch-none w-full h-5"
+              value={priceRange}
+              onValueChange={handlePriceChange}
+              max={100}
+              step={1}
             >
-              {priceRange[0].toLocaleString("vi-VN")}₫
-            </motion.span>
-            <motion.span
-              className="text-sm text-gray-600"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 2, duration: 0.5 }} // Increased delay and duration
-            >
-              {priceRange[1].toLocaleString("vi-VN")}₫
-            </motion.span>
+              <Slider.Track className="bg-gray-200 relative grow rounded-full h-[3px]">
+                <Slider.Range className="absolute bg-blue-600 rounded-full h-full" />
+              </Slider.Track>
+              <Slider.Thumb
+                className="block w-5 h-5 bg-white border-2 border-blue-600 rounded-full hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                aria-label="Min price"
+              />
+              <Slider.Thumb
+                className="block w-5 h-5 bg-white border-2 border-blue-600 rounded-full hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                aria-label="Max price"
+              />
+            </Slider.Root>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>{priceRange[0]}đ</span>
+              <span>{priceRange[1]}đ</span>
+            </div>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

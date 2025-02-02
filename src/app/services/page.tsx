@@ -1,41 +1,45 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ServiceCard } from "./service-card";
 import { Loader } from "@/components/loader";
 
-const services = [
-  {
-    title: "Cung Cấp Thiết Bị PCCC",
-    description:
-      "Chúng tôi cung cấp đa dạng các thiết bị phòng cháy chữa cháy hiện đại, đạt chuẩn quốc tế, đảm bảo an toàn tối đa cho mọi công trình và doanh nghiệp.",
-    link: "#",
-  },
-  {
-    title: "Giải Pháp PCCC Toàn Diện",
-    description:
-      "Đội ngũ chuyên gia của chúng tôi sẽ tư vấn và thiết kế giải pháp PCCC phù hợp nhất cho từng không gian, đảm bảo hiệu quả và tuân thủ các quy định pháp luật.",
-    link: "#",
-  },
-  {
-    title: "Bảo Trì và Nâng Cấp Hệ Thống PCCC",
-    description:
-      "Chúng tôi cung cấp dịch vụ bảo trì định kỳ và nâng cấp hệ thống PCCC, đảm bảo thiết bị luôn trong tình trạng hoạt động tốt nhất, sẵn sàng ứng phó mọi tình huống.",
-    link: "#",
-  },
-];
+import api from "../_utils/globalApi";
+import { StrapiService, StrapiResponse } from "../types/service";
+import { ServiceCard } from "./service-card";
 
-export default function FireFightingServicesUpgraded() {
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
+export default function ServicesPage() {
+  const [services, setServices] = useState<StrapiService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  const getServices = async () => {
+    try {
+      const response = await api.getServices();
+      console.log("API Response:", response);
+      if (response && response.data) {
+        const strapiResponse = response.data as StrapiResponse;
+        setServices(strapiResponse.data);
+      } else {
+        console.error("Unexpected API response structure:", response);
+        setServices([]);
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      setServices([]);
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
+  };
 
-    return () => clearTimeout(timer);
+  useEffect(() => {
+    getServices();
   }, []);
 
   return (
@@ -54,9 +58,11 @@ export default function FireFightingServicesUpgraded() {
         ) : (
           <motion.main
             key="content"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 1 }}
             className="flex-grow"
           >
             <section className="relative bg-gray-900 text-white py-20 px-6">
@@ -79,15 +85,29 @@ export default function FireFightingServicesUpgraded() {
 
             <section className="py-16 px-6 bg-gray-50">
               <div className="container mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <ServiceCard {...services[0]} />
-                  <ServiceCard {...services[1]} />
-                </div>
-                <div className="mt-8 flex justify-center">
-                  <div className="w-full md:w-1/2">
-                    <ServiceCard {...services[2]} />
-                  </div>
-                </div>
+                <motion.h2
+                  className="text-3xl font-bold mb-6 text-gray-800"
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.8 }}
+                >
+                  Dịch Vụ Phòng Cháy Chữa Cháy
+                </motion.h2>
+                <motion.div
+                  className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8, duration: 0.8 }}
+                >
+                  {services.map((service) => (
+                    <ServiceCard key={service.id} service={service} />
+                  ))}
+                </motion.div>
+                {services.length === 0 && (
+                  <p className="text-center text-gray-600 mt-8">
+                    No services found.
+                  </p>
+                )}
               </div>
             </section>
           </motion.main>

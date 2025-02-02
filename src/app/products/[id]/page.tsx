@@ -2,139 +2,261 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
-  Minus,
-  Plus,
-  ShoppingCart,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { RelatedProducts } from "../realted-products";
-import { products } from "../product-data";
 import { Loader } from "@/components/loader";
+import type { ProductImage, StrapiProduct } from "@/app/types/product";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
-  const product = products.find((p) => p.id === Number(id));
-  const [quantity, setQuantity] = useState(1);
+  const [product, setProduct] = useState<StrapiProduct | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 5000); // Simulate 2 seconds loading
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchProduct = async () => {
+      try {
+        const response = await fetch(
+          `https://songphatlong-admin.onrender.com/api/products/${id}?populate=*`
+        );
+        const data = await response.json();
+        setProduct(data.data);
+      } catch (error) {
+        console.error("Error fetching product:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [id]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   if (!product) {
     return <div>Product not found</div>;
   }
 
-  const images = [
-    product.image,
-    "/placeholder.svg?height=400&width=600&text=Image+2",
-    "/placeholder.svg?height=400&width=600&text=Image+3",
-  ];
-
-  const handleQuantityChange = (change: number) => {
-    setQuantity((prev) => Math.max(1, prev + change));
+  const getProductImages = (product: StrapiProduct): ProductImage[] => {
+    const images: ProductImage[] = [];
+    if (product.image) images.push(product.image);
+    if (product.image2) images.push(product.image2);
+    if (product.image3) images.push(product.image3);
+    if (product.image4) images.push(product.image4);
+    if (product.image5) images.push(product.image5);
+    return images.filter((img): img is ProductImage => img !== null);
   };
 
-  const handleAddToCart = () => {
-    console.log(`Added ${quantity} of ${product.title} to cart`);
-    // Here you would typically update a cart state or send to an API
-  };
+  const productImages = getProductImages(product);
 
   const handleImageNavigation = (direction: "next" | "prev") => {
     setCurrentImageIndex((prevIndex) => {
       if (direction === "next") {
-        return (prevIndex + 1) % images.length;
+        return (prevIndex + 1) % productImages.length;
       } else {
-        return (prevIndex - 1 + images.length) % images.length;
+        return (prevIndex - 1 + productImages.length) % productImages.length;
       }
     });
   };
 
   return (
-    <div className="min-h-screen">
-      {isLoading ? (
-        <Loader /> // Show loader while loading
-      ) : (
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col md:flex-row gap-8">
-            <div className="md:w-1/2">
-              <div className="relative aspect-square">
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row gap-8 bg-white p-6 rounded-lg shadow-sm">
+          {/* Left Column - Images */}
+          <div className="md:w-1/2">
+            <div className="relative aspect-square">
+              {productImages.length > 0 && (
                 <Image
-                  src={images[currentImageIndex]}
-                  alt={product.title}
+                  src={
+                    productImages[currentImageIndex].url || "/placeholder.svg"
+                  }
+                  alt={`${product.name} - Image ${currentImageIndex + 1}`}
                   fill
-                  className="object-cover rounded-lg"
+                  className="object-contain rounded-lg"
+                  unoptimized
                 />
-                <button
-                  onClick={() => handleImageNavigation("prev")}
-                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md"
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </button>
-                <button
-                  onClick={() => handleImageNavigation("next")}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md"
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </button>
-              </div>
+              )}
+              {productImages.length > 1 && (
+                <>
+                  <button
+                    onClick={() => handleImageNavigation("prev")}
+                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:bg-gray-100"
+                  >
+                    <ChevronLeft className="h-6 w-6 text-gray-600" />
+                  </button>
+                  <button
+                    onClick={() => handleImageNavigation("next")}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:bg-gray-100"
+                  >
+                    <ChevronRight className="h-6 w-6 text-gray-600" />
+                  </button>
+                </>
+              )}
+            </div>
+            {productImages.length > 1 && (
               <div className="flex mt-4 gap-4 overflow-x-auto">
-                {images.map((img, index) => (
+                {productImages.map((img, index) => (
                   <Image
                     key={index}
-                    src={img}
-                    alt={`${product.title} thumbnail ${index + 1}`}
+                    src={img.url || "/placeholder.svg"}
+                    alt={`${product.name} thumbnail ${index + 1}`}
                     width={100}
                     height={100}
                     className={`object-cover rounded cursor-pointer ${
                       index === currentImageIndex
-                        ? "border-2 border-blue-500"
+                        ? "border-2 border-red-600"
                         : ""
                     }`}
                     onClick={() => setCurrentImageIndex(index)}
+                    unoptimized
                   />
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* Right Column - Product Info */}
+          <div className="md:w-1/2">
+            <h1 className="text-3xl font-bold text-red-600 mb-6">
+              {product.name}
+            </h1>
+
+            {/* Product Details Table */}
+            <div className="mb-6">
+              <table className="w-full border-collapse">
+                <tbody>
+                  <tr className="border-b">
+                    <td className="py-2 text-gray-600">Mã sản phẩm:</td>
+                    <td className="py-2">
+                      {product.productID || product.documentId}
+                    </td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 text-gray-600">Thương hiệu:</td>
+                    <td className="py-2">{product.brand || "N/A"}</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 text-gray-600">Xuất xứ:</td>
+                    <td className="py-2">{product.origin || "N/A"}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div className="md:w-1/2">
-              <h1 className="text-3xl font-bold mb-4">{product.title}</h1>
-              <p className="text-gray-600 mb-4">{product.description}</p>
-              <p className="text-2xl font-bold text-red-600 mb-4">
-                {product.price.toLocaleString("vi-VN")}₫
+
+            {/* Price */}
+            <div className="mb-6">
+              <p className="text-gray-500 line-through text-lg">
+                {(product.pricing * 1.2).toLocaleString("vi-VN")}₫
               </p>
-              <div className="flex items-center gap-4 mb-4">
+              <p className="text-3xl font-bold text-red-600">
+                {product.pricing.toLocaleString("vi-VN")}₫
+              </p>
+            </div>
+
+            {/* Contact Button */}
+            <Link href="/contact" className="block mb-6">
+              <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg">
+                Liên hệ
+              </Button>
+            </Link>
+
+            {/* Contact Information */}
+            <div className="space-y-2 mb-6">
+              <div className="flex items-center gap-2">
+                <Phone className="h-5 w-5 text-red-600" />
+                <a
+                  href="tel:0985849199"
+                  className="text-gray-700 hover:text-red-600"
+                >
+                  0905799385
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-red-600" />
+                <a
+                  href="mailto:songphatlong@gmail.com"
+                  className="text-gray-700 hover:text-red-600"
+                >
+                  songphatlong@gmail.com
+                </a>
+              </div>
+            </div>
+
+            {/* Social Sharing */}
+            <div>
+              <p className="text-gray-600 mb-2">Chia sẻ lên:</p>
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleQuantityChange(-1)}
+                  className="hover:text-blue-600"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Facebook className="h-5 w-5" />
                 </Button>
-                <span className="text-xl font-semibold">{quantity}</span>
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleQuantityChange(1)}
+                  className="hover:text-blue-400"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Twitter className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="hover:text-blue-700"
+                >
+                  <Linkedin className="h-5 w-5" />
                 </Button>
               </div>
-              <Button onClick={handleAddToCart} className="w-full">
-                <ShoppingCart className="mr-2 h-4 w-4" /> Thêm vào giỏ hàng
-              </Button>
             </div>
           </div>
-          <RelatedProducts currentProductId={product.id} />
         </div>
-      )}
+
+        {/* Technical Specifications Table */}
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-sm">
+          <h2 className="text-xl font-bold mb-4">Thông số kỹ thuật</h2>
+          <table className="w-full border-collapse">
+            <tbody>
+              <tr className="border-b">
+                <td className="py-2 text-gray-600">Mã sản phẩm:</td>
+                <td className="py-2">{product.productID || "N/A"}</td>
+              </tr>
+              <tr className="border-b">
+                <td className="py-2 text-gray-600">Thương hiệu:</td>
+                <td className="py-2">{product.brand || "N/A"}</td>
+              </tr>
+              <tr className="border-b">
+                <td className="py-2 text-gray-600">Xuất xứ:</td>
+                <td className="py-2">{product.origin || "N/A"}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Product Description */}
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-sm">
+          <h2 className="text-xl font-bold mb-4">Mô tả</h2>
+          <div className="prose max-w-none">
+            <p className="text-gray-600">
+              {product.description?.[0]?.children?.[0]?.text ||
+                "No description available"}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

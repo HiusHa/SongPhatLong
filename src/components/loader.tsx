@@ -1,5 +1,5 @@
 import React from "react";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import Image from "next/image";
 
 interface LoaderProps {
   size?: number;
@@ -7,13 +7,21 @@ interface LoaderProps {
 
 export function Loader({ size = 200 }: LoaderProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-b from-[#FFF5F5] to-white">
-      <div style={{ width: size, height: size }}>
-        <DotLottieReact
-          src="https://lottie.host/fb219ab5-7218-4eaa-820d-2075eaa60b6b/owrzGlutCs.lottie"
-          loop
-          autoplay
-        />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-r from-[#87CEEB] via-white to-[#F7E987]">
+      <div className="relative" style={{ width: size, height: size }}>
+        <div
+          className="absolute inset-0 border-8 border-red-500 rounded-full animate-spin"
+          style={{ borderTopColor: "transparent" }}
+        ></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Image
+            src="/Images/logo.png"
+            alt="Logo"
+            width={size * 0.6}
+            height={size * 0.6}
+            className="rounded-full"
+          />
+        </div>
       </div>
     </div>
   );

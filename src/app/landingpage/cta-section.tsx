@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { elegantSlideIn } from "../../../utils/animations";
 
@@ -16,6 +17,7 @@ export function CTASection() {
         "Cùng SONG PHÁT LONG khám phá các giải pháp từ chuyên gia để nâng cao an toàn và hiệu quả PCCC cho doanh nghiệp của bạn.",
       buttonText: "Tư vấn cùng SONG PHÁT LONG",
       image: "/placeholder.svg?height=600&width=800&text=Business",
+      link: "/services",
     },
     {
       title: "Bạn là khách hàng cá nhân?",
@@ -23,6 +25,7 @@ export function CTASection() {
         "SONG PHÁT LONG cam kết cung cấp các sản phẩm, thiết bị PCCC chính hãng từ những thương hiệu hàng đầu thế giới .",
       buttonText: "Mua hàng cùng SONG PHÁT LONG",
       image: "/placeholder.svg?height=600&width=800&text=Customer",
+      link: "/products",
     },
   ];
 
@@ -41,7 +44,7 @@ export function CTASection() {
               className="relative h-[400px] md:h-[500px] overflow-hidden rounded-2xl shadow-2xl"
             >
               <Image
-                src={item.image}
+                src={item.image || "/placeholder.svg"}
                 alt={item.title}
                 layout="fill"
                 objectFit="cover"
@@ -57,18 +60,20 @@ export function CTASection() {
                     {item.description}
                   </p>
                 </div>
-                <div className="flex justify-center w-full">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`px-8 py-3 rounded-full font-semibold text-lg transition-colors duration-300 ${
-                      index === 0
-                        ? "bg-blue-600 text-white hover:bg-blue-700"
-                        : "bg-green-600 text-white hover:bg-green-700"
-                    }`}
-                  >
-                    {item.buttonText}
-                  </motion.button>
+                <div className="flex flex-col items-center w-full space-y-4">
+                  <Link href={index === 0 ? "/services" : "/products"}>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`px-8 py-3 rounded-full font-semibold text-lg transition-colors duration-300 ${
+                        index === 0
+                          ? "bg-blue-600 text-white hover:bg-blue-700"
+                          : "bg-green-600 text-white hover:bg-green-700"
+                      }`}
+                    >
+                      {item.buttonText}
+                    </motion.button>
+                  </Link>
                 </div>
               </div>
             </motion.div>

@@ -28,7 +28,7 @@ export function FeaturedProjects() {
   return (
     <section ref={sectionRef} className="py-24">
       <div className="container mx-auto px-4">
-        <h2 className="text-center text-3xl font-bold text-[#0066FF] mb-12">
+        <h2 className="text-center text-3xl font-bold text-red-600 mb-12">
           DỰ ÁN NỔI BẬT
         </h2>
         <div className="space-y-16">
@@ -71,7 +71,7 @@ export function FeaturedProjects() {
                   <p className="text-gray-600">{project.description}</p>
                   <Button
                     variant="secondary"
-                    className="bg-[#0066FF] text-white hover:bg-blue-700 transition-colors duration-300"
+                    className="bg-red-600 text-white hover:bg-blue-700 transition-colors duration-300"
                   >
                     Xem thêm
                   </Button>

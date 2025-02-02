@@ -13,18 +13,18 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { FloatingCTA } from "./ui/floatin-CTA";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const navItems = [
-    { href: "/", label: "Trang chủ" },
-    { href: "/about", label: "Giới thiệu" },
     { href: "/products", label: "Sản phẩm" },
     { href: "/services", label: "Dịch vụ" },
     { href: "/projects", label: "Dự án" },
-    { href: "/tin-tuc", label: "Tin tức" },
+    { href: "/news", label: "Tin tức" },
+    { href: "/contact", label: "Liên hệ" },
   ];
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function Header() {
     <header
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-300 ease-in-out",
-        isScrolled ? "bg-white shadow-md" : "bg-[#FFF9D9]"
+        isScrolled ? "bg-white shadow-md" : "bg-white"
       )}
     >
       <div className="container mx-auto px-4 md:px-8">
@@ -53,8 +53,8 @@ export function Header() {
               height={40}
               className="rounded-full"
             />
-            <span className="text-[#0066FF] text-xl font-bold">
-              BẢO VỆ AN TOÀN, KIẾN TẠO GIÁ TRỊ
+            <span className="text-[#ff0000] text-sm sm:text-xl font-bold">
+              Bảo vệ an toàn, Kiến tạo giá trị
             </span>
           </Link>
 
@@ -70,7 +70,7 @@ export function Header() {
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
-                  <Menu className="h-5 w-5" />
+                  <Menu className="h-10 w-10" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right">
@@ -82,7 +82,7 @@ export function Header() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="text-sm font-medium hover:text-[#0066FF] transition-colors"
+                      className="text-xl font-medium hover:text-[#ff0000] transition-colors"
                     >
                       {item.label}
                     </Link>
@@ -94,18 +94,23 @@ export function Header() {
 
           {/* Desktop Search Bar */}
           <div className="hidden md:flex items-center space-x-4">
+            <Link href="/about">
+              <Button variant="outline" size="lg" className="text-lg">
+                Giới thiệu
+              </Button>
+            </Link>
             <div className="relative">
               <input
                 type="search"
                 placeholder="Tìm kiếm"
-                className="h-9 w-[300px] rounded-full border border-gray-300 bg-white px-4 py-1 text-sm shadow-sm transition-all focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF] focus:ring-opacity-50"
+                className="h-9 w-[300px] rounded-full border border-gray-300 bg-white px-4 py-1 text-sm shadow-sm transition-all  focus:border-[#ff0000] focus:ring-2 focus:ring-[#ff0000] focus:ring-opacity-50"
               />
               <Button
                 size="icon"
                 variant="ghost"
                 className="absolute right-1 top-1/2 -translate-y-1/2"
               >
-                <Search className="h-4 w-4 text-[#0066FF]" />
+                <Search className="h-4 w-4 " />
               </Button>
             </div>
           </div>
@@ -118,10 +123,10 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-sm font-medium hover:text-[#0066FF] transition-colors relative group"
+                className="text-xl font-medium transition-colors relative group"
               >
                 {item.label}
-                <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-[#0066FF] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-in-out"></span>
+                <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-in-out"></span>
               </Link>
             ))}
           </nav>
@@ -138,17 +143,13 @@ export function Header() {
             <input
               type="search"
               placeholder="Tìm kiếm"
-              className="h-9 w-full rounded-full border border-gray-300 bg-white px-4 py-1 text-sm shadow-sm transition-all focus:border-[#0066FF] focus:ring-2 focus:ring-[#0066FF] focus:ring-opacity-50"
+              className="h-9 w-full rounded-full border border-gray-300 bg-white px-4 py-1 text-sm shadow-sm transition-all focus:border-[#ff0000] focus:ring-2 focus:ring-[#ff0000] focus:ring-opacity-50"
             />
-            <Button
-              size="icon"
-              variant="ghost"
-              className="absolute right-1 top-1/2 -translate-y-1/2"
-            >
-              <Search className="h-4 w-4 text-[#0066FF]" />
-            </Button>
+
+            {/* <Search className="h-4 w-4 text-[#ff0000]" /> */}
           </div>
         </div>
+        <FloatingCTA />
       </div>
     </header>
   );

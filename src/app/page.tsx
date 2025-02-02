@@ -22,7 +22,7 @@ export default function Home() {
       {isLoading ? (
         <Loader /> // Show loader while loading
       ) : (
-        <div className="min-h-screen bg-white px-4 md:px-0">
+        <div className="min-h-screen  bg-gradient-to-r from-[#87CEEB] via-white to-[#F7E987] px-4 md:px-0">
           <main>
             <HeroSection />
             <CTASection />
