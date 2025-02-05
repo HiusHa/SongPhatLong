@@ -101,6 +101,7 @@ export default function ServiceDetails() {
                 width={96}
                 height={96}
                 className="object-fill"
+                unoptimized
               />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold md:ml-6 text-red-600 text-center md:text-left">
