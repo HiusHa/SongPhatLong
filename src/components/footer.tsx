@@ -25,7 +25,7 @@ export function Footer() {
               height={120}
               className="mb-4"
             />
-            <p className="text-[#ff0000] max-w-xs mb-4">
+            <p className="text-[#ff0000] font-bold text-2xl max-w-xs mb-4">
               Bảo vệ an toàn, Kiến tạo giá trị
             </p>
             <Image
@@ -38,18 +38,18 @@ export function Footer() {
           </div>
 
           {/* Links Columns */}
-          <div className="lg:col-span-6">
-            <div className="grid grid-cols-2 gap-8">
+          <div className="lg:col-span-6 p-6">
+            <div className="grid grid-cols-2 gap-6 text-center">
               {/* About Us Column */}
               <div>
-                <h3 className="text-[#ff0000] font-medium mb-4">
+                <h3 className="text-[#ff0000] font-bold mb-4 text-2xl">
                   Về chúng tôi
                 </h3>
-                <ul className="space-y-2">
+                <ul className="space-y-6 p-6 text-xl">
                   <li>
                     <Link
                       href="/about"
-                      className="text-gray-600 hover:text-[#ff0000]"
+                      className="text-gray-600 hover:text-[#ff0000] font-bold"
                     >
                       Giới thiệu
                     </Link>
@@ -57,7 +57,7 @@ export function Footer() {
                   <li>
                     <Link
                       href="/about"
-                      className="text-gray-600 hover:text-[#ff0000]"
+                      className="text-gray-600 hover:text-[#ff0000] font-bold"
                     >
                       Đội ngũ
                     </Link>
@@ -65,7 +65,7 @@ export function Footer() {
                   <li>
                     <Link
                       href="/contact"
-                      className="text-gray-600 hover:text-[#ff0000]"
+                      className="text-gray-600 hover:text-[#ff0000] font-bold"
                     >
                       Tuyển dụng
                     </Link>
@@ -73,7 +73,7 @@ export function Footer() {
                   <li>
                     <Link
                       href="/contact"
-                      className="text-gray-600 hover:text-[#ff0000]"
+                      className="text-gray-600 hover:text-[#ff0000] font-bold"
                     >
                       Liên hệ
                     </Link>
@@ -82,12 +82,14 @@ export function Footer() {
               </div>
               {/* Store Column */}
               <div>
-                <h3 className="text-[#ff0000] font-medium mb-4">Cửa Hàng</h3>
-                <ul className="space-y-2">
+                <h3 className="text-[#ff0000] font-bold text-2xl  mb-4">
+                  Cửa Hàng
+                </h3>
+                <ul className="space-y-6 p-6 text-xl ">
                   <li>
                     <Link
                       href="/products"
-                      className="text-gray-600 hover:text-[#ff0000]"
+                      className="text-gray-600 hover:text-[#ff0000] font-bold"
                     >
                       Sản phẩm
                     </Link>
@@ -95,7 +97,7 @@ export function Footer() {
                   <li>
                     <Link
                       href="/products"
-                      className="text-gray-600 hover:text-[#ff0000]"
+                      className="text-gray-600 hover:text-[#ff0000] font-bold"
                     >
                       Danh mục
                     </Link>
@@ -103,7 +105,7 @@ export function Footer() {
                   <li>
                     <Link
                       href="/products"
-                      className="text-gray-600 hover:text-[#ff0000]"
+                      className="text-gray-600 hover:text-[#ff0000] font-bold"
                     >
                       Khuyến mãi
                     </Link>
@@ -111,7 +113,7 @@ export function Footer() {
                   <li>
                     <Link
                       href="/products"
-                      className="text-gray-600 hover:text-[#ff0000]"
+                      className="text-gray-600 hover:text-[#ff0000] font-bold"
                     >
                       Hàng mới về
                     </Link>
@@ -123,7 +125,7 @@ export function Footer() {
 
           {/* Map and Contact Info */}
           <div className="lg:col-span-3">
-            <h3 className="text-[#ff0000] font-medium mb-4">Địa chỉ</h3>
+            <h3 className="text-[#ff0000] font-bold text-xl  pb-4">Địa chỉ</h3>
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3834.9509728157873!2d108.2298502755328!3d16.01606748465589!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31421a018e76e685%3A0xec9a6d25a07c118f!2zODQgSOG7kyBQaGkgVMOtY2gsIEhvw6AgWHXDom4sIEPhuqltIEzhu4csIMSQw6AgTuG6tW5nIDUwMDAwLCBWaeG7h3QgTmFt!5e0!3m2!1svi!2s!4v1736405340790!5m2!1svi!2s"
               width="100%"
@@ -136,25 +138,25 @@ export function Footer() {
             />
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <MapPin size={18} className="text-[#ff0000]" />
-                <span className="text-gray-600">
+                <MapPin size={30} className="text-[#ff0000] font-bold" />
+                <span className="text-gray-600 font-bold">
                   84 Hồ Phi Tích, Hoà Xuân, Cẩm Lệ, Đà Nẵng 50000, Việt Nam
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone size={18} className="text-[#ff0000]" />
+                <Phone size={18} className="text-[#ff0000] font-bold" />
                 <a
                   href="tel:+84985849199"
-                  className="text-gray-600 hover:text-[#ff0000]"
+                  className="text-gray-600 hover:text-[#ff0000] font-bold"
                 >
                   0985849199
                 </a>
               </div>
               <div className="flex items-center gap-2">
-                <Mail size={18} className="text-[#ff0000]" />
+                <Mail size={18} className="text-[#ff0000] font-bold" />
                 <a
                   href="mailto:songphatlong@gmail.com"
-                  className="text-gray-600 hover:text-[#ff0000]"
+                  className="text-gray-600 hover:text-[#ff0000] font-bold"
                 >
                   songphatlong@gmail.com
                 </a>
@@ -165,18 +167,18 @@ export function Footer() {
 
         {/* Newsletter Signup */}
         <div className="mt-12 border-t border-gray-200 pt-8">
-          <h3 className="text-[#ff0000] font-medium mb-4 text-center">
+          <h3 className="text-[#ff0000] font-bold text-2xl mb-4 text-center">
             Đăng ký nhận tin
           </h3>
-          <form className="flex gap-2 max-w-md mx-auto">
+          <form className="flex gap-4 max-w-lg mx-auto">
             <Input
               type="email"
               placeholder="Nhập email của bạn"
-              className="flex-grow"
+              className="flex-grow font-bold text-xl p-4"
             />
             <Button
               type="submit"
-              className="bg-[#ff0000] text-white hover:bg-[#cc0000]"
+              className="bg-[#ff0000] text-white hover:bg-[#cc0000] font-bold text-xl p-4"
             >
               Đăng ký
             </Button>
@@ -191,13 +193,13 @@ export function Footer() {
           <div className="flex items-center gap-4">
             <Link
               href="/privacy-policy"
-              className="text-gray-600 hover:text-[#ff0000]"
+              className="text-gray-600 hover:text-[#ff0000] font-bold"
             >
               Privacy & Policy
             </Link>
             <Link
               href="/terms-condition"
-              className="text-gray-600 hover:text-[#ff0000]"
+              className="text-gray-600 hover:text-[#ff0000] font-bold"
             >
               Terms & Condition
             </Link>
@@ -205,19 +207,19 @@ export function Footer() {
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link
               href="https://facebook.com"
-              className="text-gray-600 hover:text-[#ff0000]"
+              className="text-gray-600 hover:text-[#ff0000] font-bold"
             >
               <Facebook size={24} />
             </Link>
             <Link
               href="https://twitter.com"
-              className="text-gray-600 hover:text-[#ff0000]"
+              className="text-gray-600 hover:text-[#ff0000] font-bold"
             >
               <Twitter size={24} />
             </Link>
             <Link
               href="https://instagram.com"
-              className="text-gray-600 hover:text-[#ff0000]"
+              className="text-gray-600 hover:text-[#ff0000] font-bold"
             >
               <Instagram size={24} />
             </Link>

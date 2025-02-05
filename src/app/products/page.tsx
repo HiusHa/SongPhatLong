@@ -68,14 +68,6 @@ export default function ProductPage() {
           transition={{ duration: 0.5 }}
           className="container mx-auto px-4 py-8"
         >
-          <motion.h1
-            className="text-3xl font-bold mb-6 text-gray-800"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-          >
-            Thiết Bị Phòng Cháy Chữa Cháy
-          </motion.h1>
           <Banner />
           <div className="mb-6">
             <SearchInput onSearch={handleSearch} />

@@ -70,7 +70,11 @@ export default function ServiceDetails() {
   }
 
   if (!service) {
-    return <div>Service not found</div>;
+    return (
+      <div className="text-2xl font-bold text-center py-12">
+        Service not found
+      </div>
+    );
   }
 
   return (
@@ -84,38 +88,38 @@ export default function ServiceDetails() {
         {/* Diagonal background */}
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[#cc0000] skew-x-12 transform origin-top-right" />
 
-        <div className="container mx-auto px-4 py-8 relative max-w-[1440px]">
+        <div className="container mx-auto px-4 py-12 relative max-w-[1440px]">
           {/* Header section */}
           <motion.div
-            className="flex flex-col md:flex-row items-center mb-4 md:mb-6"
+            className="flex flex-col md:flex-row items-center mb-8 md:mb-12"
             variants={fadeInUp}
           >
-            <div className="w-16 h-16 relative mb-2 md:mb-0">
+            <div className="w-24 h-24 relative mb-4 md:mb-0">
               <Image
                 src="/Images/Logo.png"
                 alt="SPL Logo"
-                width={64}
-                height={64}
+                width={96}
+                height={96}
                 className="object-fill"
               />
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold md:ml-4 text-red-600 text-center md:text-left">
+            <h1 className="text-3xl md:text-4xl font-bold md:ml-6 text-red-600 text-center md:text-left">
               {service.serviceName}
             </h1>
           </motion.div>
 
           {/* Main content */}
-          <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-8 items-start">
+          <div className="flex flex-col md:grid md:grid-cols-2 gap-8 md:gap-12 items-start">
             {/* Service Image */}
             <motion.div
-              className="relative w-full h-full md:h-[400px] order-1 md:order-2"
+              className="relative w-full h-[400px] md:h-[500px] order-1 md:order-2"
               variants={fadeInUp}
             >
               <Image
                 src={getImageUrl() || "/placeholder.svg"}
                 alt={getImageAlt()}
                 layout="fill"
-                objectFit="fill"
+                objectFit="cover"
                 className="rounded-lg"
                 onError={() => setImageError(true)}
                 unoptimized
@@ -124,7 +128,7 @@ export default function ServiceDetails() {
 
             {/* Service steps */}
             <motion.div
-              className="space-y-4 md:space-y-6 order-2 md:order-1 w-full"
+              className="space-y-6 md:space-y-8 order-2 md:order-1 w-full"
               variants={staggerChildren}
             >
               {service.step1 && (
@@ -165,13 +169,16 @@ export default function ServiceDetails() {
 
           {/* Call to Action */}
           <motion.div
-            className="mt-6 md:mt-8 text-center"
+            className="mt-12 md:mt-16 text-center"
             initial="hidden"
             animate="show"
             variants={fadeInUp}
           >
             <Link href="/contact">
-              <Button className="bg-red-600 text-white px-6 md:px-8 py-2 md:py-3 rounded-full text-base md:text-lg font-semibold hover:bg-red-700 transition-colors duration-300 w-full md:w-auto">
+              <Button
+                size="xl"
+                className="bg-green-600 text-white px-8 md:px-12 py-4 md:py-5 rounded-full text-xl md:text-2xl font-bold hover:bg-green-700 transition-colors duration-300 w-full md:w-auto"
+              >
                 Liên hệ ngay
               </Button>
             </Link>
@@ -200,26 +207,26 @@ function ServiceStep({
   return (
     <motion.div
       variants={fadeInUp}
-      className={`relative pl-8 md:pl-10 ${
+      className={`relative pl-12 md:pl-14 ${
         isActive ? "opacity-100" : "opacity-80"
       }`}
     >
       {/* Vertical line */}
       {number < 4 && service[`step${number + 1}` as keyof StrapiService] && (
-        <div className="absolute left-2.5 md:left-3 top-8 w-0.5 h-full md:h-24 bg-red-500" />
+        <div className="absolute left-3 md:left-4 top-10 w-1 h-full md:h-32 bg-red-500" />
       )}
 
       {/* Number circle */}
-      <div className="absolute left-0 top-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-xs md:text-sm">
+      <div className="absolute left-0 top-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-lg md:text-xl">
         {number}
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-lg p-3 md:p-4 shadow-lg">
-        <h3 className="text-base md:text-lg font-bold text-red-600 mb-2">
+      <div className="bg-white rounded-lg p-5 md:p-6 shadow-lg">
+        <h3 className="text-xl md:text-2xl font-bold text-red-600 mb-3">
           {title}
         </h3>
-        <p className="text-sm text-gray-600 whitespace-pre-line">
+        <p className="text-base md:text-lg text-gray-700 whitespace-pre-line">
           {description}
         </p>
       </div>

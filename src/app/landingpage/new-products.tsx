@@ -199,9 +199,9 @@ export function NewProducts() {
     >
       <motion.h2
         variants={cardVariants}
-        className="mb-6 md:mb-8 text-center text-2xl md:text-3xl font-bold text-red-600"
+        className="mb-6 md:mb-8 text-center text-3xl md:text-4xl font-bold text-red-600"
       >
-        Sản phẩm mới ra mắt
+        SẢN PHẨM MỚI RA MẮT{" "}
       </motion.h2>
       <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {products.map((product) => (

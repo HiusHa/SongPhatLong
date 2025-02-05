@@ -28,7 +28,7 @@ export function FeaturedProjects() {
   return (
     <section ref={sectionRef} className="py-24">
       <div className="container mx-auto px-4">
-        <h2 className="text-center text-3xl font-bold text-red-600 mb-12">
+        <h2 className="text-center text-4xl font-bold text-red-600 mb-12">
           DỰ ÁN NỔI BẬT
         </h2>
         <div className="space-y-16">

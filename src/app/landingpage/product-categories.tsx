@@ -29,8 +29,8 @@ export function ProductCategories() {
 
   return (
     <section ref={sectionRef} className="py-24 px-4 md:px-8">
-      <h2 className="mb-12 text-center text-3xl font-bold text-red-600">
-        Danh mục sản phẩm
+      <h2 className="mb-12 text-center text-4xl font-bold text-red-600">
+        DANH MỤC SẢN PHẨM{" "}
       </h2>
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {products.map((product, index) => (

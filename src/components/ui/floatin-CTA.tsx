@@ -3,6 +3,7 @@
 import { Phone, Facebook } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 const buttonVariants = {
   initial: { scale: 1 },
@@ -88,13 +89,22 @@ export function FloatingCTA() {
         label="Gọi điện thoại"
         color="bg-red-500"
       />
+
       <CTAButton
-        href="tel:0904858385"
+        href="https://zalo.me/0904858385"
         icon={
-          <Phone className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-white" />
+          <div className="relative w-10 h-10 md:w-7 md:h-7">
+            <Image
+              src="/Images/Icon_of_Zalo.svg.png"
+              alt="Zalo"
+              width={56}
+              height={56}
+              className="object-contain"
+            />
+          </div>
         }
-        label="Gọi điện thoại"
-        color="bg-red-500"
+        label="Chat Zalo"
+        color="bg-blue-500"
       />
     </div>
   );

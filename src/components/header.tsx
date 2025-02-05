@@ -43,17 +43,17 @@ export function Header() {
         isScrolled ? "bg-white shadow-md" : "bg-white"
       )}
     >
-      <div className="container mx-auto px-4 md:px-8">
-        <div className="flex h-14 items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
+      <div className="container mx-auto px-2 md:px-8 py-2">
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center space-x-4">
             <Image
               src="/Images/logo.png"
               alt="SPL Logo"
-              width={40}
-              height={40}
+              width={80}
+              height={80}
               className="rounded-full"
             />
-            <span className="text-[#ff0000] text-sm sm:text-xl font-bold">
+            <span className="text-[#ff0000] text-xl sm:text-xl font-bold text-center flex-grow">
               Bảo vệ an toàn, Kiến tạo giá trị
             </span>
           </Link>
@@ -95,7 +95,7 @@ export function Header() {
           {/* Desktop Search Bar */}
           <div className="hidden md:flex items-center space-x-4">
             <Link href="/about">
-              <Button variant="outline" size="lg" className="text-lg">
+              <Button variant="outline" size="lg" className="text-lg font-bold">
                 Giới thiệu
               </Button>
             </Link>
@@ -117,13 +117,13 @@ export function Header() {
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:block border-t border-gray-200 py-2">
+        <div className="hidden md:block border-t-2 border-gray-200 py-2">
           <nav className="flex justify-between">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-xl font-medium transition-colors relative group"
+                className="text-2xl font-bold transition-colors relative group"
               >
                 {item.label}
                 <span className="absolute left-0 right-0 bottom-0 h-0.5 bg-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-in-out"></span>

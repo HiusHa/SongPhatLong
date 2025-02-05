@@ -69,6 +69,12 @@ export function HeroSection() {
     });
   };
 
+  const SkeletonLoader = () => (
+    <div className="animate-pulse flex items-center justify-center h-full w-full bg-gray-200">
+      <div className="h-48 w-48 bg-gray-300"></div>
+    </div>
+  );
+
   return (
     <motion.section
       initial="offscreen"
@@ -78,7 +84,7 @@ export function HeroSection() {
       style={{ opacity }}
       className="relative"
     >
-      <div className="h-[600px] md:h-[400px] lg:h-[600px]">
+      <div className="h-[600px] md:h-[400px] lg:h-[600px] max-w-full">
         {bannerImages.length > 0 ? (
           <Swiper
             modules={[Navigation, Pagination, Autoplay]}
@@ -95,28 +101,32 @@ export function HeroSection() {
                     src={banner.url || "/placeholder.svg"}
                     alt={banner.alternativeText || "Banner"}
                     layout="fill"
-                    objectFit="contain"
+                    objectFit="fill"
                     priority
+                    className="w-full h-full"
                   />
                 </div>
               </SwiperSlide>
             ))}
           </Swiper>
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p>No banners available</p>
-          </div>
+          <SkeletonLoader />
         )}
       </div>
-      <div className="flex justify-center mt-4" ref={buttonRef}>
+      <div className="flex justify-center mt-4 font-bold " ref={buttonRef}>
         <motion.div
           animate={controls}
           variants={wiggle}
           onHoverStart={() => controls.start("hover")}
           onHoverEnd={() => controls.stop()}
         >
-          <Button variant="secondary" size="lg" onClick={handleExplore}>
-            Explore
+          <Button
+            variant="secondary"
+            size="xl"
+            className="font-bold bg-green-600 text-white text-xl"
+            onClick={handleExplore}
+          >
+            Khám phá thêm tại đây !
           </Button>
         </motion.div>
       </div>

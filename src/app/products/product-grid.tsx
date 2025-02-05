@@ -85,7 +85,7 @@ export function ProductGrid({
 
   return (
     <motion.div
-      className="space-y-6 min-h-[50vh]"
+      className="space-y-6 min-h-[50vh] font-bold text-lg"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 1, delay: 0.5 }}
@@ -97,7 +97,7 @@ export function ProductGrid({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.8 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 font-bold"
         >
           {currentProducts.map((product) => (
             <ProductCard key={product.id} product={product} />

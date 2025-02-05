@@ -17,8 +17,8 @@ export function Loader({ size = 200 }: LoaderProps) {
           <Image
             src="/Images/logo.png"
             alt="Logo"
-            width={size * 0.6}
-            height={size * 0.6}
+            width={size * 0.8}
+            height={size * 0.8}
             className="rounded-full"
           />
         </div>

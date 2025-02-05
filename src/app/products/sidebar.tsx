@@ -68,7 +68,7 @@ export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
     <div className="w-64 p-4 border-r min-h-screen">
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold mb-3">Danh mục</h2>
+          <h2 className="text-xl font-bold mb-3">Danh mục</h2>
           {isLoading ? (
             <div className="flex justify-center items-center h-20">
               <Loader2 className="h-6 w-6 animate-spin" />
@@ -84,8 +84,8 @@ export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
                   <label
                     key={category.documentId}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer",
-                      isSelected && "bg-gray-100 font-medium"
+                      "flex items-center gap-3 px-3 py-2 text-lg text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer",
+                      isSelected && "bg-gray-100 font-bold"
                     )}
                   >
                     <input
@@ -116,7 +116,7 @@ export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
         </div>
 
         <div>
-          <h2 className="text-lg font-semibold mb-3">Giá</h2>
+          <h2 className="text-xl font-bold mb-3">Giá</h2>
           <div className="space-y-4">
             <Slider.Root
               className="relative flex items-center select-none touch-none w-full h-5"
@@ -137,7 +137,7 @@ export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
                 aria-label="Max price"
               />
             </Slider.Root>
-            <div className="flex justify-between text-sm text-gray-600">
+            <div className="flex justify-between text-lg text-gray-600 font-bold">
               <span>{priceRange[0]}đ</span>
               <span>{priceRange[1]}đ</span>
             </div>
