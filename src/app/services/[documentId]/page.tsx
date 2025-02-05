@@ -8,6 +8,7 @@ import { Loader } from "@/components/loader";
 import type { StrapiService } from "../../types/service";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Logo } from "@/components/ui/logo";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -95,14 +96,9 @@ export default function ServiceDetails() {
             variants={fadeInUp}
           >
             <div className="w-24 h-24 relative mb-4 md:mb-0">
-              <Image
-                src="/Images/Logo.png"
-                alt="SPL Logo"
-                width={96}
-                height={96}
-                className="object-fill"
-                unoptimized
-              />
+              <div className="w-24 h-24 relative mb-4 md:mb-0">
+                <Logo />
+              </div>
             </div>
             <h1 className="text-3xl md:text-4xl font-bold md:ml-6 text-red-600 text-center md:text-left">
               {service.serviceName}

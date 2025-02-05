@@ -70,6 +70,8 @@ export interface StrapiProduct {
   category: string | CategoryObject[] | null;
   brand: string | null;
   origin: string | null;
+  rating?: number;
+  bought?: number;
 }
 
 export interface StrapiResponse {
