@@ -98,10 +98,12 @@ export default function ProjectsPage() {
           <div className="max-w-5xl mx-auto text-center py-16 px-4">
             <div className="mb-6 font-bold text-3xl">| SONG PHÁT LONG |</div>
             <p className="text-gray-700 text-xl leading-relaxed">
-              Hình ảnh một phần các dự án mà SONG PHÁT LONG đã và đang thực hiện
-              với vai trò là tư vấn thiết kế, thi công xây lắp hoặc tổng thầu.
-              Công ty TNHH Song Phát Long đã tổng hợp, thi thành một thương hiệu
-              mang tầm Việt Nam mình.
+              Những hình ảnh này ghi lại một phần các dự án mà SONG PHÁT LONG đã
+              và đang thực hiện với vai trò tư vấn thiết kế hoặc cung cấp sản
+              phẩm - dịch vụ PCCC. Với tâm huyết và nỗ lực không ngừng, Công ty
+              TNHH Song Phát Long đã từng bước khẳng định thương hiệu, hướng đến
+              một vị thế vững chắc trong ngành, góp phần xây dựng những công
+              trình PCCC chất lượng, mang tầm vóc Việt Nam.
             </p>
           </div>
 

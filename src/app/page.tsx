@@ -14,16 +14,19 @@ export default function Home() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 5000); // Simulate 2 seconds loading
+    }, 5000); // Simulate 5 seconds loading
     return () => clearTimeout(timer);
   }, []);
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen w-full overflow-x-hidden">
       {isLoading ? (
-        <Loader /> // Show loader while loading
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader /> {/* Show loader while loading */}
+        </div>
       ) : (
-        <div className="min-h-screen  bg-gradient-to-r from-[#ece39b]  to-[#ece39b] px-4 md:px-0">
-          <main>
+        <div className="min-h-screen bg-white">
+          <main className="max-w-10xl pt-4   ">
             <HeroSection />
             <CTASection />
             <ProductCategories />

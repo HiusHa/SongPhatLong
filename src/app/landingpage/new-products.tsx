@@ -195,7 +195,7 @@ export function NewProducts() {
       initial="hidden"
       animate={controls}
       variants={sectionVariants}
-      className="py-8 px-4 md:py-12 md:px-8"
+      className="py-8 px-4 md:py-12 md:px-8 max-w-[1440px] mx-auto"
     >
       <motion.h2
         variants={cardVariants}
@@ -228,7 +228,7 @@ export function NewProducts() {
                     ♡
                   </motion.button>
                 </div>
-                <h3 className="mt-3 text-lg md:text-xl font-semibold">
+                <h3 className="mt-3 text-lg md:text-xl font-semibold truncate">
                   {product.name}
                 </h3>
                 <div className="mt-auto pt-3 flex flex-col items-start">

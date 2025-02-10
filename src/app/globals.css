@@ -11,6 +11,25 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Add these zoom detection styles */
+@media screen and (max-resolution: 90dpi) {
+  html {
+    zoom: 0.9;
+  }
+}
+
+@media screen and (max-resolution: 80dpi) {
+  html {
+    zoom: 0.8;
+  }
+}
+
+@media screen and (max-resolution: 70dpi) {
+  html {
+    zoom: 0.7;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -96,4 +115,10 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+:root {
+  --banner-width: 100%;
+  --banner-height: 600px;
+  --button-font-size: 1.25rem;
 }

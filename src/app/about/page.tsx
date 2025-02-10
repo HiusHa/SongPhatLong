@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Shield, Phone } from "lucide-react";
+import { Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/loader";
 import { useRouter } from "next/navigation";
+// import VisionIcon from "./vision.svg";
+// import MissionIcon from "./mission.svg";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -42,7 +44,7 @@ export default function AboutPage() {
       <AnimatePresence>
         {isLoading ? (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-b from-[#FFF5F5] to-white"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
@@ -51,26 +53,31 @@ export default function AboutPage() {
           </motion.div>
         ) : (
           <>
-            <div className="relative min-h-screen bg-gradient-to-r from-[#ece39b] to-[#ece39b]">
+            <div className="relative min-h-screen bg-white">
               {/* Decorative Background */}
-              <div className="fixed inset-0 -z-10 overflow-hidden">
+              {/* <div className="fixed inset-0 -z-10 overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(254,202,202,0.2),transparent_50%)]" />
                 <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_bottom_left,rgba(254,226,226,0.2),transparent_50%)]" />
-              </div>
+              </div> */}
 
               {/* Image Banner */}
-              <div className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] xl:h-[800px]">
-                <Image
-                  src="/Images/aboutUs.jpg"
-                  alt="About Us Banner"
-                  layout="fill"
-                  objectFit="cover"
-                  className="brightness-50"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white text-center px-4">
-                    Về Chúng Tôi
-                  </h1>
+              <div className="w-full flex justify-center">
+                <div className="relative w-[var(--banner-width)] overflow-hidden">
+                  <div className="aspect-[16/9] max-h-full w-full">
+                    <Image
+                      src="/Images/aboutUs.jpg"
+                      alt="About Us Banner"
+                      layout="fill"
+                      objectFit="fill"
+                      className="brightness-50"
+                      priority
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white text-center px-4 max-w-[90%]">
+                        Về Chúng Tôi
+                      </h1>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -130,7 +137,13 @@ export default function AboutPage() {
                   <div className="w-48 h-48 sm:w-60 sm:h-60 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-full relative group">
                     <div className="absolute inset-0 bg-gradient-to-br from-red-100 to-white rounded-full shadow-[0_0_30px_rgba(254,202,202,0.3)] group-hover:shadow-[0_0_40px_rgba(254,202,202,0.4)] transition-shadow duration-500" />
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <Shield className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-red-600 group-hover:scale-110 transition-transform duration-500" />
+                      <Image
+                        src={"/Vision.svg"}
+                        alt="Vision"
+                        width={96}
+                        height={96}
+                        className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-red-600 group-hover:scale-110 transition-transform duration-500"
+                      />
                       <p className="mt-2 sm:mt-3 md:mt-4 font-bold text-xl sm:text-2xl md:text-3xl text-gray-800">
                         TẦM NHÌN
                       </p>
@@ -138,12 +151,12 @@ export default function AboutPage() {
                   </div>
                   <div className="max-w-3xl pt-4 flex flex-col gap-4 sm:gap-5 md:gap-6">
                     <p className="text-gray-800 text-lg sm:text-xl md:text-2xl leading-relaxed font-semibold">
-                      Trở thành đơn vị đầu đầu tại Việt Nam trong lĩnh vực tư
+                      - Trở thành đơn vị đầu đầu tại Việt Nam trong lĩnh vực tư
                       vấn, thiết kế và cung cấp giải pháp cùng thiết bị phòng
                       cháy chữa cháy.
                     </p>
                     <p className="text-gray-800 text-lg sm:text-xl md:text-2xl leading-relaxed font-semibold">
-                      Trở thành đơn vị được khách hàng tin tưởng lựa chọn nhờ
+                      - Trở thành đơn vị được khách hàng tin tưởng lựa chọn nhờ
                       vào chất lượng vượt trội, sự chuyên nghiệp và cam kết an
                       toàn tuyệt đối.
                     </p>
@@ -163,7 +176,13 @@ export default function AboutPage() {
                   <div className="w-48 h-48 sm:w-60 sm:h-60 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-full relative group lg:order-last">
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-100 to-white rounded-full shadow-[0_0_30px_rgba(255,237,213,0.3)] group-hover:shadow-[0_0_40px_rgba(255,237,213,0.4)] transition-shadow duration-500" />
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <Flame className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-orange-600 group-hover:scale-110 transition-transform duration-500" />
+                      <Image
+                        src={"/mission.svg"}
+                        alt="Mission"
+                        width={96}
+                        height={96}
+                        className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 text-orange-600 group-hover:scale-110 transition-transform duration-500"
+                      />
                       <p className="mt-2 sm:mt-3 md:mt-4 font-bold text-xl sm:text-2xl md:text-3xl text-gray-800">
                         SỨ MỆNH
                       </p>
@@ -171,17 +190,17 @@ export default function AboutPage() {
                   </div>
                   <div className="max-w-3xl pt-4 flex flex-col gap-4 sm:gap-5 md:gap-6">
                     <p className="text-gray-800 text-lg sm:text-xl md:text-2xl leading-relaxed font-semibold">
-                      Cung cấp các giải pháp phòng cháy chữa cháy tối ưu, ứng
+                      - Cung cấp các giải pháp phòng cháy chữa cháy tối ưu, ứng
                       dụng công nghệ tiên tiến và đảm bảo tiêu chuẩn an toàn cao
                       nhất.
                     </p>
                     <p className="text-gray-800 text-lg sm:text-xl md:text-2xl leading-relaxed font-semibold">
-                      Bảo vệ tính mạng và tài sản của khách hàng, góp phần xây
+                      - Bảo vệ tính mạng và tài sản của khách hàng, góp phần xây
                       dựng sự an tâm trong mọi hoạt động kinh doanh và sinh
                       hoạt.
                     </p>
                     <p className="text-gray-800 text-lg sm:text-xl md:text-2xl leading-relaxed font-semibold">
-                      Đồng hành cùng khách hàng trong việc kiến tạo một môi
+                      - Đồng hành cùng khách hàng trong việc kiến tạo một môi
                       trường sống và làm việc an toàn, bền vững.
                     </p>
                   </div>

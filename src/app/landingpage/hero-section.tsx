@@ -76,60 +76,66 @@ export function HeroSection() {
   );
 
   return (
-    <motion.section
-      initial="offscreen"
-      whileInView="onscreen"
-      viewport={{ once: true, amount: 0.8 }}
-      variants={scrollAnimation}
-      style={{ opacity }}
-      className="relative"
-    >
-      <div className="h-[600px] md:h-[400px] lg:h-[600px] max-w-full">
-        {bannerImages.length > 0 ? (
-          <Swiper
-            modules={[Navigation, Pagination, Autoplay]}
-            navigation
-            pagination={{ clickable: true }}
-            autoplay={{ delay: 5000 }}
-            loop
-            className="h-full w-full"
-          >
-            {bannerImages.map((banner) => (
-              <SwiperSlide key={banner.id}>
-                <div className="relative w-full h-full">
+    <div className="w-full flex justify-center items-center">
+      <motion.section
+        initial="offscreen"
+        whileInView="onscreen"
+        viewport={{ once: true, amount: 0.8 }}
+        variants={scrollAnimation}
+        style={{ opacity }}
+        className="relative w-screen overflow-hidden flex flex-col items-center"
+      >
+        <div className="relative w-full overflow-hidden">
+          {bannerImages.length > 0 ? (
+            <Swiper
+              modules={[Navigation, Pagination, Autoplay]}
+              navigation
+              pagination={{ clickable: true }}
+              autoplay={{ delay: 5000 }}
+              loop
+              className=" relative min-w-[1024px] w-full max-w-[1920px] mx-auto"
+            >
+              {bannerImages.map((banner) => (
+                <SwiperSlide
+                  key={banner.id}
+                  className="relative aspect-[3/1] w-full"
+                >
                   <Image
                     src={banner.url || "/placeholder.svg"}
-                    alt={banner.alternativeText || "Banner"}
-                    layout="fill"
-                    objectFit="fill"
+                    alt="Banner description"
+                    fill
                     priority
-                    className="w-full h-full"
+                    sizes="(min-width: 1920px) 1920px, (min-width: 1024px) 100vw"
+                    className="object-cover"
                   />
-                </div>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        ) : (
-          <SkeletonLoader />
-        )}
-      </div>
-      <div className="flex justify-center mt-4 font-bold " ref={buttonRef}>
-        <motion.div
-          animate={controls}
-          variants={wiggle}
-          onHoverStart={() => controls.start("hover")}
-          onHoverEnd={() => controls.stop()}
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          ) : (
+            <SkeletonLoader />
+          )}
+        </div>
+        <div
+          className="flex justify-center mt-4 font-bold w-full pb-8"
+          ref={buttonRef}
         >
-          <Button
-            variant="secondary"
-            size="xl"
-            className="font-bold bg-green-600 text-white text-xl"
-            onClick={handleExplore}
+          <motion.div
+            animate={controls}
+            variants={wiggle}
+            onHoverStart={() => controls.start("hover")}
+            onHoverEnd={() => controls.stop()}
           >
-            Khám phá thêm tại đây !
-          </Button>
-        </motion.div>
-      </div>
-    </motion.section>
+            <Button
+              variant="secondary"
+              size="xl"
+              className="font-bold bg-green-600 text-white hover:bg-green-700 transition-colors duration-300"
+              onClick={handleExplore}
+            >
+              Khám phá thêm tại đây !
+            </Button>
+          </motion.div>
+        </div>
+      </motion.section>
+    </div>
   );
 }
