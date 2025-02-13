@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import api from "../_utils/globalApi";
@@ -14,24 +17,42 @@ type NewsItem = {
   };
 };
 
-export default async function NewsPage() {
-  let news: NewsItem[] = [];
-  let error = null;
+export default function NewsPage() {
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  try {
-    const response = await api.getNews();
-    news = response.data.data;
-  } catch (e) {
-    error =
-      e instanceof Error ? e.message : "An error occurred while fetching news";
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        const response = await api.getNews();
+        setNews(response.data.data);
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "An error occurred while fetching news"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchNews();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
+        <p className="text-gray-700">Loading...</p>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="container mx-auto px-4">
-          <p className="text-gray-700">Error: {error}</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
+        <p className="text-gray-700">Error: {error}</p>
       </div>
     );
   }
