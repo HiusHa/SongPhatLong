@@ -9,6 +9,7 @@ export function BoCongThuong() {
         width={200}
         height={75}
         className="mt-4"
+        unoptimized
       />
       ;
     </div>
