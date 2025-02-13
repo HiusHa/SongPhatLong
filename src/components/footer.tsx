@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import {
   Facebook,
@@ -10,6 +9,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Logo } from "./ui/logo";
+import { BoCongThuong } from "./ui/BoCongThuong";
 
 export function Footer() {
   return (
@@ -18,23 +19,11 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8">
           {/* Logo and Vision */}
           <div className="lg:col-span-3">
-            <Image
-              src="/images/logo.png"
-              alt="SPL Logo"
-              width={120}
-              height={120}
-              className="mb-4"
-            />
+            <Logo />
             <p className="text-red-600 font-bold text-4xl max-w-xs mb-4">
               Bảo vệ an toàn Kiến tạo giá trị
             </p>
-            <Image
-              src="/images/bo-cong-thuong.png"
-              alt="Bộ Công Thương"
-              width={200}
-              height={75}
-              className="mt-4"
-            />
+            <BoCongThuong />
           </div>
 
           {/* Links Columns */}
