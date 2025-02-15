@@ -3,12 +3,10 @@
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone } from "lucide-react";
+import { Phone, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/loader";
 import { useRouter } from "next/navigation";
-// import VisionIcon from "./vision.svg";
-// import MissionIcon from "./mission.svg";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -36,6 +34,13 @@ export default function AboutPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleScrollDown = () => {
+    window.scrollTo({
+      top: window.innerHeight,
+      behavior: "smooth",
+    });
+  };
+
   return (
     <div
       className="min-h-screen bg-gradient-to-r from-[#87CEEB] via-white to-[#F7E987]"
@@ -54,28 +59,31 @@ export default function AboutPage() {
         ) : (
           <>
             <div className="relative min-h-screen bg-white">
-              {/* Decorative Background */}
-              {/* <div className="fixed inset-0 -z-10 overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(254,202,202,0.2),transparent_50%)]" />
-                <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_bottom_left,rgba(254,226,226,0.2),transparent_50%)]" />
-              </div> */}
-
               {/* Image Banner */}
-              <div className="w-full flex justify-center">
+              <div className="w-full flex justify-center bg-gradient-to-r from-red-600/50 to-red-900/50 ">
                 <div className="relative w-[var(--banner-width)] overflow-hidden">
-                  <div className="aspect-[16/9] max-h-full w-full">
-                    <Image
+                  <div className="aspect-[calc(4*3+1)/3] max-h-full w-full">
+                    {/* <Image
                       src="/Images/aboutUs.jpg"
                       alt="About Us Banner"
                       layout="fill"
                       objectFit="fill"
                       className="brightness-50"
                       priority
-                    />
+                    /> */}
                     <div className="absolute inset-0 flex items-center justify-center">
                       <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white text-center px-4 max-w-[90%]">
                         Về Chúng Tôi
                       </h1>
+                      {/* Scroll Down CTA */}
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                        <button
+                          onClick={handleScrollDown}
+                          className="flex items-center justify-center text-white bg-red-600 hover:bg-red-700 rounded-full p-3 shadow-lg transition-all duration-300"
+                        >
+                          <ChevronDown className="w-6 h-6" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
