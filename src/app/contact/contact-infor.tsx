@@ -12,8 +12,8 @@ export function ContactInfo() {
     {
       icon: <Phone className="h-8 w-8 md:h-10 md:w-10" />,
       title: "Hotline",
-      content: "0905799385",
-      href: "tel:+84905799385",
+      content: "0904858385",
+      href: "tel:+84904858385",
     },
     {
       icon: <MapPin className="h-8 w-8 md:h-10 md:w-10" />,
