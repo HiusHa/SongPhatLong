@@ -21,16 +21,38 @@ export function ContactForm() {
     phone: 0,
     message: "",
   });
+  const [errors, setErrors] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+  });
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    if (name === "phone") {
-      const numericValue = value.replace(/\D/g, "");
+    if (name === "firstName" || name === "lastName") {
+      // Only allow letters, spaces, and hyphens
+      const sanitizedValue = value.replace(/[^a-zA-Z\s-]/g, "");
       setFormData((prevData) => ({
         ...prevData,
-        [name]: numericValue === "" ? 0 : Number.parseInt(numericValue, 10),
+        [name]: sanitizedValue,
+      }));
+    } else if (name === "phone") {
+      // Remove non-digit characters and the +84 prefix if present
+      let numericValue = value.replace(/\D/g, "");
+
+      // If the user tries to enter the +84 prefix, remove it
+      if (numericValue.startsWith("84")) {
+        numericValue = numericValue.slice(2);
+      }
+
+      // Convert to number with 84 prefix
+      const finalValue = numericValue ? Number("84" + numericValue) : 0;
+
+      setFormData((prevData) => ({
+        ...prevData,
+        phone: finalValue,
       }));
     } else {
       setFormData((prevData) => ({
@@ -40,8 +62,34 @@ export function ContactForm() {
     }
   };
 
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors = { firstName: "", lastName: "", phone: "" };
+
+    if (!/^[a-zA-Z\s-]+$/.test(formData.firstName)) {
+      newErrors.firstName = "Họ không được chứa số";
+      isValid = false;
+    }
+
+    if (!/^[a-zA-Z\s-]+$/.test(formData.lastName)) {
+      newErrors.lastName = "Tên không được chứa số";
+      isValid = false;
+    }
+
+    if (!/^84[0-9]{9,10}$/.test(formData.phone.toString())) {
+      newErrors.phone = "Số điện thoại không hợp lệ";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
     setIsSubmitting(true);
     try {
       console.log("Submitting form data:", formData);
@@ -118,6 +166,9 @@ export function ContactForm() {
               value={formData.firstName}
               onChange={handleInputChange}
             />
+            {errors.firstName && (
+              <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
+            )}
           </div>
           <div>
             <Input
@@ -129,6 +180,9 @@ export function ContactForm() {
               value={formData.lastName}
               onChange={handleInputChange}
             />
+            {errors.lastName && (
+              <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
+            )}
           </div>
         </div>
         <div>
@@ -143,17 +197,27 @@ export function ContactForm() {
           />
         </div>
         <div>
-          <Input
-            type="tel"
-            name="phone"
-            placeholder="Số điện thoại"
-            required
-            pattern="[0-9]{9,10}"
-            title="Vui lòng nhập số điện thoại hợp lệ (9-10 chữ số)"
-            className="w-full text-lg md:text-xl p-3"
-            value={formData.phone === 0 ? "" : formData.phone.toString()}
-            onChange={handleInputChange}
-          />
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg md:text-xl">
+              +84
+            </span>
+            <Input
+              type="tel"
+              name="phone"
+              placeholder="Số điện thoại"
+              required
+              pattern="[0-9]{9,10}"
+              title="Vui lòng nhập số điện thoại hợp lệ (9-10 chữ số)"
+              className="w-full text-lg md:text-xl p-3 pl-14"
+              value={
+                formData.phone === 0 ? "" : formData.phone.toString().slice(2)
+              }
+              onChange={handleInputChange}
+            />
+          </div>
+          {errors.phone && (
+            <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+          )}
         </div>
         <div>
           <Textarea

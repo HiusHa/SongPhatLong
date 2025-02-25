@@ -66,12 +66,11 @@ const submitContactForm = (
   const dataToSend = {
     data: {
       ...formData,
-      phone: Number(formData.phone), // Ensure phone is sent as a number
+      phone: `+${formData.phone}`, // Ensure phone is sent as a string with "+" prefix
     },
   };
   console.log("Submitting form data:", JSON.stringify(dataToSend, null, 2));
   console.log("API URL:", `${apiURL}/contactforms`);
-  console.log("API Key:", apiKey); // Be cautious with logging sensitive information
   return axiosClient
     .post("/contactforms", dataToSend)
     .then((response) => {
