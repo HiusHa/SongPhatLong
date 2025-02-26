@@ -1,16 +1,3 @@
-interface ImageFormat {
-  ext: string;
-  url: string;
-  hash: string;
-  mime: string;
-  name: string;
-  path: null;
-  size: number;
-  width: number;
-  height: number;
-  sizeInBytes?: number;
-}
-
 export interface ProductImage {
   id: number;
   documentId: string;
@@ -37,12 +24,17 @@ export interface ProductImage {
   url: string;
 }
 
-export interface CategoryObject {
-  id: number;
+interface ImageFormat {
+  ext: string;
+  url: string;
+  hash: string;
+  mime: string;
   name: string;
+  path: null;
+  size: number;
+  width: number;
+  height: number;
 }
-
-export type ProductCategory = string | CategoryObject[] | null;
 
 export interface StrapiProduct {
   id: number;
@@ -59,7 +51,6 @@ export interface StrapiProduct {
   originalPrice?: number;
   createdAt: string;
   productID: string | null;
-
   updatedAt: string;
   publishedAt: string;
   image: ProductImage;
@@ -67,21 +58,17 @@ export interface StrapiProduct {
   image3: ProductImage | null;
   image4: ProductImage | null;
   image5: ProductImage | null;
-  category: string | CategoryObject[] | null;
+  category: string | { id: number; name: string }[] | null;
   brand: string | null;
   origin: string | null;
   rating?: number;
   bought?: number;
 }
 
-export interface StrapiResponse {
-  data: StrapiProduct[];
-  meta: {
-    pagination: {
-      page: number;
-      pageSize: number;
-      pageCount: number;
-      total: number;
-    };
-  };
+export interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
 }

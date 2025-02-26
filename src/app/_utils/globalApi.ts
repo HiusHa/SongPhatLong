@@ -1,5 +1,6 @@
 import "dotenv/config";
 import axios, { type AxiosResponse } from "axios";
+import type { OrderData, OrderStatus } from "../types/Order";
 
 const apiKey = process.env.NEXT_PUBLIC_API_KEY;
 
@@ -8,6 +9,7 @@ const apiURL = "https://songphatlong-admin.onrender.com/api";
 const axiosClient = axios.create({
   baseURL: apiURL,
   headers: {
+    "Content-Type": "application/json",
     Authorization: `Bearer ${apiKey}`,
   },
 });
@@ -30,7 +32,14 @@ if (process.env.NODE_ENV !== "production") {
   axiosClient.interceptors.response.use(
     (response) => response,
     (error) => {
-      console.error("Axios Error:", error.response?.data || error.message);
+      console.error("Axios Error:", error.message);
+      if (error.response) {
+        console.error("Response data:", error.response.data);
+        console.error("Response status:", error.response.status);
+        console.error("Response headers:", error.response.headers);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      }
       return Promise.reject(error);
     }
   );
@@ -39,7 +48,10 @@ if (process.env.NODE_ENV !== "production") {
   axiosClient.interceptors.response.use(
     (response) => response,
     (error) => {
-      console.error("API Error:", error.message);
+      console.error(
+        "API Error:",
+        error.response?.data?.error?.message || error.message
+      );
       return Promise.reject(error);
     }
   );
@@ -83,13 +95,53 @@ const submitContactForm = (
     });
 };
 
+const submitOrder = (
+  orderData: Omit<OrderData, "orderNumber" | "Stattus">
+): Promise<AxiosResponse> => {
+  const orderNumber = `SPL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const Stattus: OrderStatus = "pending";
+
+  const dataToSend = {
+    data: {
+      firstName: orderData.firstName,
+      lastName: orderData.lastName,
+      address: orderData.address,
+      phone: orderData.phone.toString(), // Ensure phone is sent as a string
+      email: orderData.email,
+      notes: orderData.notes || "",
+      alternateAddress: orderData.alternateAddress || "",
+      items: JSON.stringify(orderData.items), // Ensure items are sent as a JSON string
+      subtotal: orderData.subtotal,
+      total: orderData.total,
+      Stattus: Stattus, // Using "Stattus" with a capital 'S' to match the schema
+      orderNumber: orderNumber,
+    },
+  };
+
+  console.log("Submitting order data:", JSON.stringify(dataToSend, null, 2));
+  console.log("API URL:", `${apiURL}/orders`);
+
+  return axiosClient
+    .post("/orders", dataToSend)
+    .then((response) => {
+      console.log("Order submitted successfully:", response.data);
+      return response;
+    })
+    .catch((error) => {
+      console.error("API Error:", error.response?.data || error.message);
+      console.error("Full error object:", JSON.stringify(error, null, 2));
+      throw error;
+    });
+};
+
 const api = {
   getLatestProducts,
   getServices,
   getCategories,
   getBanners,
   getNews,
-  submitContactForm, // Use the real function always
+  submitContactForm,
+  submitOrder,
 };
 
 export default api;

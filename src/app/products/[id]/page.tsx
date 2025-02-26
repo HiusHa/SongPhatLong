@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,10 +17,15 @@ import {
   Star,
   StarHalf,
   X,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/loader";
 import type { ProductImage, StrapiProduct } from "@/app/types/product";
+
+import { toast, Toaster } from "react-hot-toast";
+import { addToCart } from "../../../../utils/cartUtils";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -29,6 +36,8 @@ export default function ProductDetailPage() {
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
   const [showMagnifier, setShowMagnifier] = useState(false);
   const imageRef = useRef<HTMLDivElement>(null);
+
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -121,6 +130,21 @@ export default function ProductDetailPage() {
     []
   );
 
+  const handleAddToCart = () => {
+    if (product) {
+      addToCart(product, quantity);
+      toast.success(
+        `Đã thêm ${quantity} ${
+          quantity > 1 ? "sản phẩm" : "sản phẩm"
+        } vào giỏ hàng`,
+        {
+          duration: 3000,
+          position: "top-center",
+        }
+      );
+    }
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -133,6 +157,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster />
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8 bg-white p-6 rounded-lg shadow-sm">
           {/* Left Column - Images */}
@@ -226,8 +251,10 @@ export default function ProductDetailPage() {
 
             {/* Rating and Bought Count */}
             <div className="flex items-center gap-4 mb-4">
-              {renderStars(product.rating || 0)}
-              <div className="text-gray-600">Đã bán: {product.bought || 0}</div>
+              {product.rating && renderStars(product.rating)}
+              {product.bought && (
+                <div className="text-gray-600">Đã bán: {product.bought}</div>
+              )}
             </div>
 
             {/* Product Details Table */}
@@ -254,17 +281,46 @@ export default function ProductDetailPage() {
 
             {/* Price */}
             <div className="mb-6">
-              <p className="text-gray-500 line-through text-lg">
-                {(product.pricing * 1.2).toLocaleString("vi-VN")}₫
-              </p>
+              {product.originalPrice && (
+                <p className="text-gray-500 line-through text-lg">
+                  {product.originalPrice.toLocaleString("vi-VN")}₫
+                </p>
+              )}
               <p className="text-3xl font-bold text-red-600">
                 {product.pricing.toLocaleString("vi-VN")}₫
               </p>
             </div>
 
+            {/* Quantity Selector */}
+            <div className="flex items-center space-x-4 mb-6">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="text-xl font-semibold">{quantity}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setQuantity((prev) => prev + 1)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Add to Cart Button */}
+            <Button
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg mb-4"
+              onClick={handleAddToCart}
+            >
+              Thêm vào giỏ hàng
+            </Button>
+
             {/* Contact Button */}
             <Link href="/contact" className="block mb-6">
-              <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg">
                 Liên hệ
               </Button>
             </Link>

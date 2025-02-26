@@ -7,8 +7,8 @@ import {
   Phone,
   MapPin,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+// import { Button } from "@/components/ui/button";
+// import { Input } from "@/components/ui/input";
 import { Logo } from "./ui/logo";
 import { BoCongThuong } from "./ui/BoCongThuong";
 
@@ -187,7 +187,7 @@ export function Footer() {
         </div>
 
         {/* Newsletter Signup */}
-        <div className="mt-12 border-t border-gray-200 pt-8">
+        {/* <div className="mt-12 border-t border-gray-200 pt-8">
           <h3 className="text-red-600 font-bold text-2xl mb-4 text-center">
             Đăng ký nhận tin
           </h3>
@@ -204,7 +204,7 @@ export function Footer() {
               Đăng ký
             </Button>
           </form>
-        </div>
+        </div> */}
 
         {/* Bottom Bar */}
         <div className="mt-8 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">

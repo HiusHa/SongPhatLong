@@ -8,7 +8,7 @@ import { Sidebar } from "./sidebar";
 import { ProductGrid } from "./product-grid";
 import { Loader } from "@/components/loader";
 import api from "../_utils/globalApi";
-import type { StrapiProduct, StrapiResponse } from "../types/product";
+import type { StrapiProduct } from "../types/product";
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -35,7 +35,7 @@ export default function ProductPage() {
       const response = await api.getLatestProducts();
       console.log("API Response:", response);
       if (response && response.data) {
-        const strapiResponse = response.data as StrapiResponse;
+        const strapiResponse = response.data as { data: StrapiProduct[] };
         setProducts(strapiResponse.data);
       } else {
         console.error("Unexpected API response structure:", response);

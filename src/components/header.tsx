@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Search } from "lucide-react";
+import { Menu, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -11,13 +11,24 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { FloatingCTA } from "./ui/floatin-CTA";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useRouter } from "next/navigation";
+
+import type { CartItem } from "@/app/types/product";
+import {
+  getCart,
+  removeFromCart,
+  updateCartItemQuantity,
+} from "../../utils/cartUtils";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const router = useRouter();
 
   const navItems = [
     { href: "/products", label: "Sản phẩm" },
@@ -35,6 +46,118 @@ export function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const updateCart = () => {
+      setCartItems(getCart());
+    };
+
+    updateCart();
+    window.addEventListener("storage", updateCart);
+
+    // Set up an interval to check for cart updates
+    const intervalId = setInterval(updateCart, 1000);
+
+    return () => {
+      window.removeEventListener("storage", updateCart);
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  const updateQuantity = (id: number, newQuantity: number) => {
+    updateCartItemQuantity(id, newQuantity);
+    setCartItems(getCart());
+  };
+
+  const removeItem = (id: number) => {
+    removeFromCart(id);
+    setCartItems(getCart());
+  };
+
+  const CartContent = () => (
+    <div className="flex flex-col h-full">
+      <SheetHeader>
+        <SheetTitle className="text-2xl font-bold">Giỏ hàng của bạn</SheetTitle>
+        <SheetDescription>
+          Xem lại các mặt hàng trong giỏ hàng của bạn và tiến hành thanh toán.
+        </SheetDescription>
+      </SheetHeader>
+      <ScrollArea className="flex-1 mt-6">
+        {cartItems.length === 0 ? (
+          <div className="text-center py-6 text-gray-500">Giỏ hàng trống</div>
+        ) : (
+          <div className="space-y-6">
+            {cartItems.map((item) => (
+              <div key={item.id} className="flex space-x-4">
+                <div className="relative w-24 h-24">
+                  <Image
+                    src={item.image || "/placeholder.svg"}
+                    alt={item.name}
+                    fill
+                    className="rounded-lg object-cover"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold">{item.name}</h3>
+                  <p className="text-red-600 font-medium">
+                    {item.price.toLocaleString("vi-VN")}đ
+                  </p>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    >
+                      -
+                    </Button>
+                    <span className="w-8 text-center">{item.quantity}</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    >
+                      +
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 ml-4"
+                      onClick={() => removeItem(item.id)}
+                    >
+                      Xóa
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
+      <div className="border-t pt-4 mt-4">
+        <div className="flex justify-between text-lg font-semibold mb-4">
+          <span>Tổng cộng:</span>
+          <span className="text-red-600">
+            {totalPrice.toLocaleString("vi-VN")}đ
+          </span>
+        </div>
+        <Button
+          className="w-full bg-red-600 hover:bg-red-700 text-white"
+          size="lg"
+          onClick={() => router.push("/check-out")}
+        >
+          Thanh toán
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <header
@@ -58,15 +181,27 @@ export function Header() {
             </span>
           </Link>
 
-          {/* Mobile Menu */}
+          {/* Mobile Menu and Cart */}
           <div className="md:hidden flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-            >
-              <Search className="h-5 w-5" />
-            </Button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="relative p-2 hover:bg-red-100 transition-colors"
+                >
+                  <ShoppingCart className="h-6 w-6" />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-[400px]">
+                <CartContent />
+              </SheetContent>
+            </Sheet>
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -76,6 +211,9 @@ export function Header() {
               <SheetContent side="right">
                 <SheetHeader>
                   <SheetTitle>Menu</SheetTitle>
+                  <SheetDescription>
+                    Điều hướng đến các trang khác nhau của trang web.
+                  </SheetDescription>
                 </SheetHeader>
                 <nav className="flex flex-col space-y-4 mt-6">
                   {navItems.map((item) => (
@@ -92,27 +230,32 @@ export function Header() {
             </Sheet>
           </div>
 
-          {/* Desktop Search Bar */}
+          {/* Desktop Cart and About Button */}
           <div className="hidden md:flex items-center space-x-4">
             <Link href="/about">
               <Button variant="outline" size="lg" className="text-lg font-bold">
                 Giới thiệu
               </Button>
             </Link>
-            <div className="relative">
-              <input
-                type="search"
-                placeholder="Tìm kiếm"
-                className="h-9 w-[300px] rounded-full border border-gray-300 bg-white px-4 py-1 text-sm shadow-sm transition-all  focus:border-[#ff0000] focus:ring-2 focus:ring-[#ff0000] focus:ring-opacity-50"
-              />
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute right-1 top-1/2 -translate-y-1/2"
-              >
-                <Search className="h-4 w-4 " />
-              </Button>
-            </div>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="relative p-2 hover:bg-red-100 transition-colors"
+                >
+                  <ShoppingCart className="h-6 w-6" />
+                  {totalItems > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {totalItems}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[400px]">
+                <CartContent />
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
 
@@ -130,24 +273,6 @@ export function Header() {
               </Link>
             ))}
           </nav>
-        </div>
-
-        {/* Mobile Search Bar */}
-        <div
-          className={cn(
-            "md:hidden py-2 overflow-hidden transition-all duration-300 ease-in-out",
-            isMobileSearchOpen ? "max-h-16 opacity-100" : "max-h-0 opacity-0"
-          )}
-        >
-          <div className="relative">
-            <input
-              type="search"
-              placeholder="Tìm kiếm"
-              className="h-9 w-full rounded-full border border-gray-300 bg-white px-4 py-1 text-sm shadow-sm transition-all focus:border-[#ff0000] focus:ring-2 focus:ring-[#ff0000] focus:ring-opacity-50"
-            />
-
-            {/* <Search className="h-4 w-4 text-[#ff0000]" /> */}
-          </div>
         </div>
         <FloatingCTA />
       </div>
