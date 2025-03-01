@@ -16,7 +16,7 @@ export function CTASection() {
       description:
         "Cùng SONG PHÁT LONG khám phá các giải pháp từ chuyên gia để nâng cao an toàn và hiệu quả PCCC cho doanh nghiệp của bạn.",
       buttonText: "Tư vấn cùng SONG PHÁT LONG",
-      image: "/placeholder.svg?height=600&width=800&text=Business",
+      image: "/Images/doanhNghiep.jpg",
       link: "/services",
     },
     {
@@ -24,7 +24,7 @@ export function CTASection() {
       description:
         "SONG PHÁT LONG cam kết cung cấp các sản phẩm, thiết bị PCCC chính hãng từ những thương hiệu hàng đầu thế giới .",
       buttonText: "Mua hàng cùng SONG PHÁT LONG",
-      image: "/placeholder.svg?height=600&width=800&text=Customer",
+      image: "/Images/khachHang.jpg",
       link: "/products",
     },
   ];
@@ -41,7 +41,7 @@ export function CTASection() {
               initial="hidden"
               animate={isInView ? "visible" : "hidden"}
               transition={{ delay: index * 0.2 }}
-              className="relative h-[400px] md:h-[500px] overflow-hidden rounded-2xl shadow-2xl"
+              className="relative h-[400px] md:h-[500px] overflow-hidden rounded-2xl "
             >
               <Image
                 src={item.image || "/placeholder.svg"}
@@ -50,7 +50,7 @@ export function CTASection() {
                 objectFit="cover"
                 className="z-0"
               />
-              <div className="absolute inset-0 bg-black bg-opacity-50 z-10" />
+              <div className="absolute inset-0  bg-opacity-50 z-10" />
               <div className="absolute inset-0 z-20 flex flex-col justify-between p-8 md:p-12">
                 <div>
                   <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">

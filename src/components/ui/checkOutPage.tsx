@@ -120,7 +120,7 @@ export function CheckoutPage() {
       toast.success("Đặt hàng thành công!");
 
       // Redirect to success page
-      router.push("/checkout/success");
+      router.push("/check-out/success");
     } catch (error) {
       if (error instanceof AxiosError) {
         const errorMessage =

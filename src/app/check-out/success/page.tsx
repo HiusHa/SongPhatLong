@@ -25,7 +25,7 @@ export default function CheckoutSuccessPage() {
             <Button variant="outline">Tiếp tục mua sắm</Button>
           </Link>
           <Link href="/">
-            <Button>Về trang chủ</Button>
+            <Button className="bg-red-500">Về trang chủ</Button>
           </Link>
         </div>
       </motion.div>

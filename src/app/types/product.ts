@@ -36,6 +36,15 @@ interface ImageFormat {
   height: number;
 }
 
+export interface Category {
+  id: number;
+  documentId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+}
+
 export interface StrapiProduct {
   id: number;
   documentId: string;
@@ -58,7 +67,7 @@ export interface StrapiProduct {
   image3: ProductImage | null;
   image4: ProductImage | null;
   image5: ProductImage | null;
-  category: string | { id: number; name: string }[] | null;
+  categories: Category[];
   brand: string | null;
   origin: string | null;
   rating?: number;

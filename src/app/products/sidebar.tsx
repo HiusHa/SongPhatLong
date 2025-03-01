@@ -1,43 +1,55 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { Loader2 } from "lucide-react";
-import * as Slider from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
 import api from "@/app/_utils/globalApi";
 
 interface SidebarProps {
   onCategoryChange: (categories: string[]) => void;
-  onPriceChange?: (priceRange: number[]) => void;
 }
 
 interface Category {
   id: number;
   documentId: string;
   name: string;
-  Icon: {
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+  Icon: null | {
     data: {
       attributes: {
         url: string;
       };
-    } | null;
+    };
   };
 }
 
-export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
+interface ApiResponse {
+  data: Category[];
+  meta: {
+    pagination: {
+      page: number;
+      pageSize: number;
+      pageCount: number;
+      total: number;
+    };
+  };
+}
+
+export function Sidebar({ onCategoryChange }: SidebarProps) {
   const [categories, setCategories] = React.useState<Category[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>(
     []
   );
-  const [priceRange, setPriceRange] = React.useState<number[]>([0, 100]);
 
   React.useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await api.getCategories();
-        setCategories(response.data.data);
+        const fetchedCategories = (response.data as ApiResponse).data;
+        setCategories(fetchedCategories);
       } catch (error) {
         console.error("Error fetching categories:", error);
       } finally {
@@ -48,20 +60,13 @@ export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
     fetchCategories();
   }, []);
 
-  const handleCategoryChange = (categoryId: string) => {
-    const newCategories = selectedCategories.includes(categoryId)
-      ? selectedCategories.filter((id) => id !== categoryId)
-      : [...selectedCategories, categoryId];
+  const handleCategoryChange = (categoryName: string) => {
+    const newCategories = selectedCategories.includes(categoryName)
+      ? selectedCategories.filter((name) => name !== categoryName)
+      : [...selectedCategories, categoryName];
 
     setSelectedCategories(newCategories);
     onCategoryChange(newCategories);
-  };
-
-  const handlePriceChange = (newPriceRange: number[]) => {
-    setPriceRange(newPriceRange);
-    if (onPriceChange) {
-      onPriceChange(newPriceRange);
-    }
   };
 
   return (
@@ -76,9 +81,7 @@ export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
           ) : (
             <div className="flex flex-col space-y-2">
               {categories.map((category) => {
-                const isSelected = selectedCategories.includes(
-                  category.documentId
-                );
+                const isSelected = selectedCategories.includes(category.name);
 
                 return (
                   <label
@@ -91,57 +94,15 @@ export function Sidebar({ onCategoryChange, onPriceChange }: SidebarProps) {
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => handleCategoryChange(category.documentId)}
-                      className="form-checkbox h-4 w-4 text-blue-600 transition duration-150 ease-in-out"
+                      onChange={() => handleCategoryChange(category.name)}
+                      className="form-checkbox h-4 w-4 text-red-600 transition duration-150 ease-in-out"
                     />
-                    {category.Icon?.data && (
-                      <div className="relative w-5 h-5 flex-shrink-0">
-                        <Image
-                          src={
-                            category.Icon.data.attributes.url ||
-                            "/placeholder.svg"
-                          }
-                          alt={category.name}
-                          layout="fill"
-                          objectFit="contain"
-                        />
-                      </div>
-                    )}
                     <span className="truncate">{category.name}</span>
                   </label>
                 );
               })}
             </div>
           )}
-        </div>
-
-        <div>
-          <h2 className="text-xl font-bold mb-3">Giá</h2>
-          <div className="space-y-4">
-            <Slider.Root
-              className="relative flex items-center select-none touch-none w-full h-5"
-              value={priceRange}
-              onValueChange={handlePriceChange}
-              max={100}
-              step={1}
-            >
-              <Slider.Track className="bg-gray-200 relative grow rounded-full h-[3px]">
-                <Slider.Range className="absolute bg-blue-600 rounded-full h-full" />
-              </Slider.Track>
-              <Slider.Thumb
-                className="block w-5 h-5 bg-white border-2 border-blue-600 rounded-full hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                aria-label="Min price"
-              />
-              <Slider.Thumb
-                className="block w-5 h-5 bg-white border-2 border-blue-600 rounded-full hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                aria-label="Max price"
-              />
-            </Slider.Root>
-            <div className="flex justify-between text-lg text-gray-600 font-bold">
-              <span>{priceRange[0]}đ</span>
-              <span>{priceRange[1]}đ</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>

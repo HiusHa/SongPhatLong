@@ -281,6 +281,9 @@ export default function ProductDetailPage() {
 
             {/* Price */}
             <div className="mb-6">
+              <p className="text-base text-gray-500 line-through">
+                {(product.pricing * 1.2).toLocaleString("vi-VN")}₫
+              </p>
               {product.originalPrice && (
                 <p className="text-gray-500 line-through text-lg">
                   {product.originalPrice.toLocaleString("vi-VN")}₫

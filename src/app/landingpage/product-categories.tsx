@@ -12,18 +12,18 @@ export function ProductCategories() {
   const isInView = useInView(sectionRef, { once: true, amount: 0.3 });
 
   const products = [
-    { name: "Tất cả sản phẩm", image: "/placeholder.svg?height=200&width=300" },
+    { name: "Tất cả sản phẩm", image: "/Images/Tatca.jpg" },
     {
       name: "Thiết bị chữa cháy",
-      image: "/placeholder.svg?height=200&width=300",
+      image: "/Images/ChuaChay.jpg",
     },
     {
       name: "Thiết bị báo cháy",
-      image: "/placeholder.svg?height=200&width=300",
+      image: "/Images/baoChay.jpg",
     },
     {
       name: "Hệ thống chữa cháy",
-      image: "/placeholder.svg?height=200&width=300",
+      image: "/Images/HeThongChuaChay.jpg",
     },
   ];
 
