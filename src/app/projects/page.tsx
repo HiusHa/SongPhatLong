@@ -2,73 +2,53 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/loader";
 
 interface Project {
   id: string;
   title: string;
   location: string;
-  imageUrl: string;
+  description: string;
+  image: string; // Changed from imageUrl to image
 }
 
 const projects: Project[] = [
   {
     id: "1",
-    title: "DỰ ÁN VINCOM TRÀNG TIỀN",
-    location: "HÀ NỘI",
-    imageUrl: "/placeholder.svg?height=400&width=400",
+    title: "Dự án DANAPHA TOWER",
+    location: "ĐÀ NẴNG",
+    description:
+      "Cung cấp thiết bị và giải pháp PCCC cho Danapha Tower, công trình cao 15 tầng nổi và 3 tầng hầm, xây dựng trên diện tích đất 616,8 m2 với diện tích xây dựng khoảng 7.780 m2.",
+    image: "/Images/project1.jpg",
   },
   {
     id: "2",
-    title: "DỰ ÁN VĂN PHÒNG LÀM VIỆC VÀ CHO THUÊ ĐỆ CẦN",
-    location: "",
-    imageUrl: "/placeholder.svg?height=400&width=400",
-  },
-  {
-    id: "3",
-    title: "DỰ ÁN HỆ THỐNG KHO LẠNH ETC",
-    location: "",
-    imageUrl: "/placeholder.svg?height=400&width=400",
-  },
-  {
-    id: "4",
-    title: "DỰ ÁN TỔ HỢP THƯƠNG MẠI - VĂN PHÒNG CHO THUÊ MACHINCO 1",
-    location: "",
-    imageUrl: "/placeholder.svg?height=400&width=400",
-  },
-  {
-    id: "5",
-    title: "DỰ ÁN XÂY DỰNG TRỤ SỞ NGÂN HÀNG AGRIBANK - CHI NHÁNH TỈNH BẮC KẠN",
-    location: "",
-    imageUrl: "/placeholder.svg?height=400&width=400",
-  },
-  {
-    id: "6",
-    title: "DỰ ÁN XÂY DỰNG TRỤ SỞ NGÂN HÀNG AGRIBANK - CHI NHÁNH ĐỐNG ĐA",
-    location: "",
-    imageUrl: "/placeholder.svg?height=400&width=400",
+    title: "Dự án KHÁCH SẠN GARRYA",
+    location: "ĐÀ NẴNG",
+    description:
+      "Chúng tôi tự hào cung cấp giải pháp và thiết bị PCCC cho khách sạn Garrya Đà Nẵng, tọa lạc trên 1.042,9 m2 đất với quy mô 2 tầng hầm và 9 tầng nổi. Công trình được thiết kế hiện đại, đáp ứng đầy đủ các tiêu chuẩn an toàn và chất lượng cao nhất.",
+    image: "/Images/project2.jpg",
   },
 ];
-
-const MotionCard = motion(Card);
 
 export default function ProjectsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Shorter loading time for testing
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2000); // Simulate 2 seconds loading
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <div className="min-h-screen">
       {isLoading ? (
-        <Loader /> // Show loader while loading
+        <Loader />
       ) : (
         <div className="min-h-screen bg-gray-50">
           {/* Hero Section */}
@@ -107,44 +87,72 @@ export default function ProjectsPage() {
             </p>
           </div>
 
-          {/* Projects Grid */}
-          <div className="max-w-7xl mx-auto px-4 pb-20">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+          {/* Projects Section - Simplified */}
+          <section className="py-12 max-w-7xl mx-auto px-4 pb-20">
+            <h2 className="text-center text-4xl font-bold text-red-600 mb-12">
+              DỰ ÁN NỔI BẬT
+            </h2>
+            <div className="space-y-16">
               {projects.map((project, index) => (
-                <MotionCard
+                <motion.div
                   key={project.id}
-                  className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
-                  initial={{ y: 50, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{
-                    duration: 0.5,
-                    delay: index * 0.1,
-                    type: "spring",
-                    stiffness: 100,
-                  }}
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.2 }}
+                  className="border border-gray-200 rounded-lg p-8 bg-white shadow-lg"
                 >
-                  <div className="relative h-72">
-                    <Image
-                      src={project.imageUrl || "/placeholder.svg"}
-                      alt={project.title}
-                      fill
-                      className="object-cover"
-                    />
+                  <div
+                    className={`grid md:grid-cols-2 gap-8 items-center ${
+                      index % 2 === 1 ? "md:flex-row-reverse" : ""
+                    }`}
+                  >
+                    <div
+                      className={`${
+                        index % 2 === 1 ? "md:order-2" : ""
+                      } mb-4 md:mb-0`}
+                    >
+                      <div className="relative aspect-[4/3] w-full">
+                        <Image
+                          src={project.image || "/placeholder.svg"}
+                          alt={project.title}
+                          fill
+                          className="rounded-lg object-cover"
+                          onError={(e) => {
+                            console.error(
+                              `Failed to load image: ${project.image}`
+                            );
+                            e.currentTarget.src =
+                              "/placeholder.svg?height=400&width=400";
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div
+                      className={`space-y-4 ${
+                        index % 2 === 1 ? "md:order-1" : ""
+                      }`}
+                    >
+                      <h3 className="text-2xl font-semibold text-gray-800">
+                        {project.title}
+                      </h3>
+                      {project.location && (
+                        <p className="text-lg font-medium text-red-600">
+                          {project.location}
+                        </p>
+                      )}
+                      <p className="text-gray-600">{project.description}</p>
+                      <Button
+                        variant="secondary"
+                        className="bg-red-600 text-white hover:bg-blue-700 transition-colors duration-300"
+                      >
+                        Xem thêm
+                      </Button>
+                    </div>
                   </div>
-                  <CardContent className="text-center p-6">
-                    <h3 className="font-bold text-xl mb-3 leading-tight">
-                      {project.title}
-                    </h3>
-                    {project.location && (
-                      <p className="text-gray-700 text-lg">
-                        {project.location}
-                      </p>
-                    )}
-                  </CardContent>
-                </MotionCard>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </section>
         </div>
       )}
     </div>

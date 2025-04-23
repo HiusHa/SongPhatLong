@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export function Logo() {
   return (
-    <div className="w-24 h-24 relative">
+    <div className="w-24 h-24 relative mx-auto">
       <Image
         src="/Images/logo.png"
         alt="SPL Logo"

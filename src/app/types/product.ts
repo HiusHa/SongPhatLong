@@ -1,3 +1,15 @@
+interface ImageFormat {
+  ext: string;
+  url: string;
+  hash: string;
+  mime: string;
+  name: string;
+  path: null;
+  size: number;
+  width: number;
+  height: number;
+}
+
 export interface ProductImage {
   id: number;
   documentId: string;
@@ -24,18 +36,6 @@ export interface ProductImage {
   url: string;
 }
 
-interface ImageFormat {
-  ext: string;
-  url: string;
-  hash: string;
-  mime: string;
-  name: string;
-  path: null;
-  size: number;
-  width: number;
-  height: number;
-}
-
 export interface Category {
   id: number;
   documentId: string;
@@ -45,16 +45,21 @@ export interface Category {
   publishedAt: string;
 }
 
+// Update the text node interface to include bold and italic properties
+interface TextNode {
+  text: string;
+  type: string;
+  bold?: boolean;
+  italic?: boolean;
+}
+
 export interface StrapiProduct {
   id: number;
   documentId: string;
   name: string;
   description: Array<{
     type: string;
-    children: Array<{
-      text: string;
-      type: string;
-    }>;
+    children: TextNode[];
   }>;
   pricing: number;
   originalPrice?: number;
@@ -63,10 +68,10 @@ export interface StrapiProduct {
   updatedAt: string;
   publishedAt: string;
   image: ProductImage;
-  image2: ProductImage | null;
-  image3: ProductImage | null;
-  image4: ProductImage | null;
-  image5: ProductImage | null;
+  image2: ProductImage[] | ProductImage | null;
+  image3: ProductImage[] | ProductImage | null;
+  image4: ProductImage[] | ProductImage | null;
+  image5: ProductImage[] | ProductImage | null;
   categories: Category[];
   brand: string | null;
   origin: string | null;

@@ -1,12 +1,16 @@
 "use client";
 
+import type React from "react";
+
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { motion, useAnimation, useInView, type Variants } from "framer-motion";
+import { useAnimation, useInView } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import api from "../_utils/globalApi";
+import Link from "next/link";
+import { ArrowRight, ChevronLeft, ChevronRight, Heart } from "lucide-react";
 
+// Định nghĩa các interface
 interface StrapiProduct {
   id: number;
   documentId: string;
@@ -24,39 +28,26 @@ interface StrapiProduct {
       };
     };
   };
-  description: Array<{
-    type: string;
-    children: Array<{ text: string; type: string }>;
-  }>;
-}
-
-interface StrapiResponse {
-  data: StrapiProduct[];
-  meta: {
-    pagination: {
-      page: number;
-      pageSize: number;
-      pageCount: number;
-      total: number;
-    };
-  };
 }
 
 interface Product {
   id: number;
+  documentId: string;
   name: string;
   price: string;
   originalPrice: string;
   imageUrl: string;
 }
 
-export function NewProducts() {
+function NewProducts() {
   const controls = useAnimation();
   const [isMobile, setIsMobile] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]); // Bỏ dữ liệu mẫu
+  const [isLoading, setIsLoading] = useState(true); // Bắt đầu với true để hiển thị loading
   const [error, setError] = useState<string | null>(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
   const ref = useRef(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, amount: 0.2 });
 
   useEffect(() => {
@@ -67,95 +58,146 @@ export function NewProducts() {
   }, []);
 
   useEffect(() => {
-    const getLatestProducts = async () => {
+    // Fetch API data only after component mounts
+    const fetchProducts = async () => {
       try {
-        setIsLoading(true);
-        const response = await api.getLatestProducts();
-        console.log("Raw API Response:", response);
+        const apiUrl = `${
+          process.env.NEXT_PUBLIC_API_URL ||
+          "https://songphatlong-admin.onrender.com"
+        }/api/products?populate=*&sort=createdAt:desc`;
+        const response = await fetch(apiUrl);
 
-        if (!response || !response.data) {
-          throw new Error("Invalid response from API");
+        if (!response.ok) {
+          throw new Error(`API responded with status: ${response.status}`);
         }
 
-        const strapiResponse = response.data as StrapiResponse;
-        console.log("Strapi Response:", strapiResponse);
+        const data = await response.json();
 
-        if (!Array.isArray(strapiResponse.data)) {
-          throw new Error("Data is not an array");
+        if (data && data.data && Array.isArray(data.data)) {
+          // Limit to 8 products
+          const limitedProducts = data.data.slice(0, 10);
+
+          const formattedProducts = limitedProducts.map(
+            (item: StrapiProduct) => {
+              const actualPrice = item.pricing || 0;
+              const originalPrice = Math.ceil(actualPrice * 1.2); // 20% higher
+              return {
+                id: item.id,
+                documentId: item.documentId || `product-${item.id}`,
+                name: item.name || "Sản phẩm",
+                price: new Intl.NumberFormat("vi-VN", {
+                  style: "currency",
+                  currency: "VND",
+                }).format(actualPrice),
+                originalPrice: new Intl.NumberFormat("vi-VN", {
+                  style: "currency",
+                  currency: "VND",
+                }).format(originalPrice),
+                imageUrl:
+                  item.image?.formats?.small?.url ||
+                  item.image?.url ||
+                  "/placeholder.svg?height=300&width=300",
+              };
+            }
+          );
+
+          // Update state with API products
+          setProducts(formattedProducts);
         }
-
-        const formattedProducts = strapiResponse.data.map(
-          (item: StrapiProduct) => {
-            console.log("Processing item:", item); // Debug log
-            const actualPrice = item.pricing || 0;
-            const originalPrice = Math.ceil(actualPrice * 1.2); // 20% higher
-            return {
-              id: item.id,
-              name: item.name || "Unnamed Product",
-              price: new Intl.NumberFormat("vi-VN", {
-                style: "currency",
-                currency: "VND",
-              }).format(actualPrice),
-              originalPrice: new Intl.NumberFormat("vi-VN", {
-                style: "currency",
-                currency: "VND",
-              }).format(originalPrice),
-              imageUrl:
-                item.image?.formats?.small?.url ||
-                item.image?.url ||
-                "/placeholder.svg",
-            };
-          }
-        );
-
-        console.log("Formatted Products:", formattedProducts);
-        setProducts(formattedProducts);
-        setError(null);
       } catch (error) {
         console.error("Error fetching products:", error);
-        setError(
-          error instanceof Error ? error.message : "Failed to fetch products"
-        );
-        setProducts([]);
+        setError("Không thể tải sản phẩm. Vui lòng thử lại sau.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    getLatestProducts();
+    fetchProducts();
   }, []);
 
   useEffect(() => {
-    if (products.length > 0) {
+    if (products.length > 0 && isInView && !hasAnimated) {
       controls.start("visible");
+      setHasAnimated(true);
     }
-  }, [controls, products]);
+  }, [controls, products, isInView, hasAnimated]);
 
-  const cardVariants: Variants = {
-    hidden: (index: number) => ({
-      opacity: 0,
-      x: index < 2 ? 100 : -100,
-    }),
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15,
-        duration: 0.5,
-      },
-    },
+  // Calculate the number of visible items based on screen size
+  const getVisibleItems = () => {
+    if (isMobile) return 1;
+    if (window.innerWidth < 1024) return 2;
+    return 4;
   };
-  useEffect(() => {
-    if (isInView) {
-      controls.start("visible");
+
+  // Slider navigation functions with circular navigation
+  const scrollLeft = () => {
+    if (!sliderRef.current || products.length === 0) return;
+
+    const itemWidth = sliderRef.current.scrollWidth / products.length;
+    const visibleItems = getVisibleItems();
+
+    // If at the beginning, scroll to the end
+    if (sliderRef.current.scrollLeft < itemWidth) {
+      // Calculate position for last set of items
+      const maxScrollPosition =
+        sliderRef.current.scrollWidth - sliderRef.current.clientWidth;
+      sliderRef.current.scrollTo({
+        left: maxScrollPosition,
+        behavior: "smooth",
+      });
+    } else {
+      // Normal scroll left
+      sliderRef.current.scrollBy({
+        left: -itemWidth * visibleItems,
+        behavior: "smooth",
+      });
     }
-  }, [controls, isInView]);
+  };
+
+  const scrollRight = () => {
+    if (!sliderRef.current || products.length === 0) return;
+
+    const itemWidth = sliderRef.current.scrollWidth / products.length;
+    const visibleItems = getVisibleItems();
+    const maxScrollPosition =
+      sliderRef.current.scrollWidth - sliderRef.current.clientWidth;
+
+    // If at the end, scroll to the beginning
+    if (sliderRef.current.scrollLeft >= maxScrollPosition - 10) {
+      sliderRef.current.scrollTo({
+        left: 0,
+        behavior: "smooth",
+      });
+    } else {
+      // Normal scroll right
+      sliderRef.current.scrollBy({
+        left: itemWidth * visibleItems,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // Function to handle contact button click
+  const handleContactClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent default behavior
+    e.stopPropagation(); // Stop event propagation to parent Link
+
+    // Navigate to contact page
+    window.location.href = "/contact";
+  };
+
   if (isLoading) {
     return (
-      <div className="py-8 px-4 md:py-12 md:px-8 text-center">
-        Loading products...
+      <div className="py-8 px-4 md:py-12 md:px-8 max-w-[1440px] mx-auto">
+        <div className="h-10 w-64 bg-gray-200 rounded-md mx-auto mb-8 animate-pulse"></div>
+        <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <div
+              key={item}
+              className="h-80 bg-gray-200 rounded-md animate-pulse"
+            ></div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -163,7 +205,7 @@ export function NewProducts() {
   if (error) {
     return (
       <div className="py-8 px-4 md:py-12 md:px-8 text-center text-red-600">
-        Error: {error}
+        {error}
       </div>
     );
   }
@@ -171,88 +213,121 @@ export function NewProducts() {
   if (!products.length) {
     return (
       <div className="py-8 px-4 md:py-12 md:px-8 text-center">
-        No products available.
+        Không có sản phẩm nào.
       </div>
     );
   }
 
-  const sectionVariants: Variants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        when: "beforeChildren",
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
   return (
-    <motion.section
+    <section
       ref={ref}
-      initial="hidden"
-      animate={controls}
-      variants={sectionVariants}
       className="py-8 px-4 md:py-12 md:px-8 max-w-[1440px] mx-auto"
     >
-      <motion.h2
-        variants={cardVariants}
-        className="mb-6 md:mb-8 text-center text-3xl md:text-4xl font-bold text-red-600"
-      >
-        SẢN PHẨM MỚI RA MẮT{" "}
-      </motion.h2>
-      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {products.map((product) => (
-          <motion.div
-            key={product.id}
-            variants={cardVariants}
-            whileHover={isMobile ? {} : { scale: 1.05 }}
-            whileTap={isMobile ? { scale: 0.95 } : {}}
+      <h2 className="mb-6 md:mb-8 text-center text-3xl md:text-4xl font-bold text-red-600">
+        SẢN PHẨM MỚI RA MẮT
+      </h2>
+
+      {/* Product Slider with side navigation buttons */}
+      <div className="mb-8">
+        <div className="relative">
+          {/* Left navigation button */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={scrollLeft}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/80 hover:bg-red-100 hover:text-red-600 shadow-md"
+            style={{ transform: "translate(-50%, -50%)" }}
           >
-            <Card className="h-full">
-              <CardContent className="p-3 md:p-4 flex flex-col h-full">
-                <div className="relative h-40 md:h-48 w-full">
-                  <Image
-                    src={product.imageUrl || "/placeholder.svg"}
-                    alt={product.name}
-                    layout="fill"
-                    objectFit="cover"
-                    className="rounded-lg"
-                  />
-                  <motion.button
-                    className="absolute right-2 top-2 rounded-full bg-white p-1.5"
-                    whileTap={{ scale: 0.9 }}
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+
+          {/* Right navigation button */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={scrollRight}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/80 hover:bg-red-100 hover:text-red-600 shadow-md"
+            style={{ transform: "translate(50%, -50%)" }}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+
+          <div className="relative overflow-hidden px-4">
+            <div
+              ref={sliderRef}
+              className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {products.map((product) => (
+                <div
+                  key={`slider-${product.id}`}
+                  className="flex-none w-full sm:w-1/2 md:w-1/3 lg:w-1/4 snap-start"
+                >
+                  <Link
+                    href={`/products/${product.documentId}`}
+                    className="block h-full"
                   >
-                    ♡
-                  </motion.button>
+                    <Card className="h-full cursor-pointer transition-shadow hover:shadow-md">
+                      <CardContent className="p-3 md:p-4 flex flex-col h-full">
+                        <div className="relative h-40 md:h-48 w-full">
+                          <Image
+                            src={product.imageUrl || "/placeholder.svg"}
+                            alt={product.name}
+                            fill
+                            className="object-cover rounded-lg"
+                          />
+                          <button
+                            className="absolute right-2 top-2 rounded-full bg-white p-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Heart className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <h3 className="mt-3 text-lg md:text-xl font-semibold truncate">
+                          {product.name}
+                        </h3>
+                        <div className="mt-auto pt-3 flex flex-col items-start">
+                          <span className="text-sm md:text-base text-gray-500 line-through">
+                            {product.originalPrice}
+                          </span>
+                          <span className="text-base md:text-lg font-semibold text-red-600">
+                            {product.price}
+                          </span>
+                        </div>
+                        <div className="mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs md:text-sm hover:bg-red-600 hover:text-white transition-colors duration-300"
+                            onClick={handleContactClick}
+                          >
+                            Liên hệ
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 </div>
-                <h3 className="mt-3 text-lg md:text-xl font-semibold truncate">
-                  {product.name}
-                </h3>
-                <div className="mt-auto pt-3 flex flex-col items-start">
-                  <span className="text-sm md:text-base text-gray-500 line-through">
-                    {product.originalPrice}
-                  </span>
-                  <span className="text-base md:text-lg font-semibold text-red-600">
-                    {product.price}
-                  </span>
-                </div>
-                <div className="mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs md:text-sm hover:bg-red-600 hover:text-white transition-colors duration-300"
-                  >
-                    Liên hệ
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-    </motion.section>
+
+      {/* "Xem thêm" (See more) button - links to products page */}
+      <div className="flex justify-center mt-8">
+        <Link href="/products">
+          <Button
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md flex items-center gap-2 text-base"
+            size="lg"
+          >
+            Xem thêm
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </Link>
+      </div>
+    </section>
   );
 }
+
+export default NewProducts;

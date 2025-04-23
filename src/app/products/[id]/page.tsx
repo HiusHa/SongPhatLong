@@ -120,11 +120,54 @@ export default function ProductDetailPage() {
   const getProductImages = useCallback(
     (product: StrapiProduct): ProductImage[] => {
       const images: ProductImage[] = [];
+
+      // Handle image (direct object)
       if (product.image) images.push(product.image);
-      if (product.image2) images.push(product.image2);
-      if (product.image3) images.push(product.image3);
-      if (product.image4) images.push(product.image4);
-      if (product.image5) images.push(product.image5);
+
+      // Handle image2 (could be array or object)
+      if (product.image2) {
+        if (Array.isArray(product.image2)) {
+          // If it's an array, add each item
+          product.image2.forEach((img) => {
+            if (img) images.push(img);
+          });
+        } else {
+          // If it's a direct object
+          images.push(product.image2);
+        }
+      }
+
+      // Handle remaining images
+      if (product.image3) {
+        if (Array.isArray(product.image3)) {
+          product.image3.forEach((img) => {
+            if (img) images.push(img);
+          });
+        } else {
+          images.push(product.image3);
+        }
+      }
+
+      if (product.image4) {
+        if (Array.isArray(product.image4)) {
+          product.image4.forEach((img) => {
+            if (img) images.push(img);
+          });
+        } else {
+          images.push(product.image4);
+        }
+      }
+
+      if (product.image5) {
+        if (Array.isArray(product.image5)) {
+          product.image5.forEach((img) => {
+            if (img) images.push(img);
+          });
+        } else {
+          images.push(product.image5);
+        }
+      }
+
       return images.filter((img): img is ProductImage => img !== null);
     },
     []
@@ -177,7 +220,7 @@ export default function ProductDetailPage() {
                   }
                   alt={`${product.name} - Image ${currentImageIndex + 1}`}
                   fill
-                  className="object-cover object-top rounded-lg"
+                  className="object-fill object-top rounded-lg"
                   unoptimized
                 />
               )}
@@ -405,10 +448,27 @@ export default function ProductDetailPage() {
         <div className="mt-8 bg-white p-6 rounded-lg shadow-sm">
           <h2 className="text-xl font-bold mb-4">Mô tả</h2>
           <div className="prose max-w-none">
-            <p className="text-gray-600">
-              {product.description?.[0]?.children?.[0]?.text ||
-                "No description available"}
-            </p>
+            {product.description && product.description.length > 0 ? (
+              <div className="space-y-2">
+                {product.description.map((paragraph, index) => (
+                  <p key={index} className="text-gray-700">
+                    {paragraph.children &&
+                      paragraph.children.map((child, childIndex) => {
+                        // Handle different text formatting
+                        if (child.bold) {
+                          return <strong key={childIndex}>{child.text}</strong>;
+                        } else if (child.italic) {
+                          return <em key={childIndex}>{child.text}</em>;
+                        } else {
+                          return <span key={childIndex}>{child.text}</span>;
+                        }
+                      })}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600">No description available</p>
+            )}
           </div>
         </div>
       </div>

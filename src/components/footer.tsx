@@ -18,7 +18,7 @@ export function Footer() {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8">
           {/* Logo and Vision */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 flex flex-col items-center text-center">
             <Logo />
             <p className="text-red-600 font-bold text-4xl max-w-xs mb-4">
               Bảo vệ an toàn Kiến tạo giá trị
@@ -209,7 +209,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="mt-8 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-gray-600">
-            ©2025 SONG PHÁT LONG. All rights reserved
+            ©2025 SONG PHAT LONG. All rights reserved
           </p>
           <div className="flex items-center gap-4">
             <Link

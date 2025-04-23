@@ -73,7 +73,7 @@ export function ProductCard({ product }: ProductCardProps) {
               src={getImageUrl() || "/placeholder.svg"}
               alt={getImageAlt()}
               layout="fill"
-              objectFit="cover"
+              objectFit="fill"
               className="transition-transform duration-300 group-hover:scale-105"
               onError={() => setImageError(true)}
               unoptimized

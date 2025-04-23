@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import api from "../_utils/globalApi";
-
+import { Loader } from "@/components/loader";
 type NewsItem = {
   id: number;
   documentId: string;
@@ -44,7 +44,7 @@ export default function NewsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
-        <p className="text-gray-700">Loading...</p>
+        <Loader /> {/* Show loader while loading */}
       </div>
     );
   }
