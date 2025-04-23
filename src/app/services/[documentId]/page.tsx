@@ -90,9 +90,9 @@ export default function ServiceDetails() {
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[#cc0000] skew-x-12 transform origin-top-right" />
 
         <div className="container mx-auto px-4 py-12 relative max-w-[1440px]">
-          {/* Header section */}
+          {/* Header section with improved contrast */}
           <motion.div
-            className="flex flex-col md:flex-row items-center mb-8 md:mb-12"
+            className="flex flex-col md:flex-row items-center mb-8 md:mb-12 relative z-10"
             variants={fadeInUp}
           >
             <div className="w-24 h-24 relative mb-4 md:mb-0">
@@ -100,9 +100,12 @@ export default function ServiceDetails() {
                 <Logo />
               </div>
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold md:ml-6 text-red-600 text-center md:text-left">
-              {service.serviceName}
-            </h1>
+            {/* Thêm background cho tiêu đề để tăng độ tương phản */}
+            <div className="bg-white/90 px-6 py-3 rounded-lg shadow-md md:ml-6">
+              <h1 className="text-3xl md:text-4xl font-bold text-red-600 text-center md:text-left">
+                {service.serviceName}
+              </h1>
+            </div>
           </motion.div>
 
           {/* Main content */}
@@ -117,7 +120,7 @@ export default function ServiceDetails() {
                 alt={getImageAlt()}
                 layout="fill"
                 objectFit="cover"
-                className="rounded-lg"
+                className="rounded-lg shadow-lg" // Thêm shadow
                 onError={() => setImageError(true)}
                 unoptimized
               />
@@ -174,7 +177,7 @@ export default function ServiceDetails() {
             <Link href="/contact">
               <Button
                 size="xl"
-                className="bg-green-600 text-white px-8 md:px-12 py-4 md:py-5 rounded-full text-xl md:text-2xl font-bold hover:bg-green-700 transition-colors duration-300 w-full md:w-auto"
+                className="bg-green-600 text-white px-8 md:px-12 py-4 md:py-5 rounded-full text-xl md:text-2xl font-bold hover:bg-green-700 transition-colors duration-300 w-full md:w-auto shadow-lg" // Thêm shadow
               >
                 Liên hệ ngay
               </Button>
@@ -205,7 +208,7 @@ function ServiceStep({
     <motion.div
       variants={fadeInUp}
       className={`relative pl-12 md:pl-14 ${
-        isActive ? "opacity-100" : "opacity-80"
+        isActive ? "opacity-100" : "opacity-90"
       }`}
     >
       {/* Vertical line */}
@@ -214,7 +217,7 @@ function ServiceStep({
       )}
 
       {/* Number circle */}
-      <div className="absolute left-0 top-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-lg md:text-xl">
+      <div className="absolute left-0 top-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-lg md:text-xl shadow-md">
         {number}
       </div>
 
