@@ -149,7 +149,7 @@ export function HeroSection() {
               {/* Images with fade transition */}
               {bannerImages.map((banner, index) => (
                 <div
-                  key={banner.id}
+                  key={`${banner.id}-${index}`} //
                   className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
                     activeIndex === index ? "opacity-100 z-10" : "opacity-0 z-0"
                   }`}

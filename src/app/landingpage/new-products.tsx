@@ -274,7 +274,7 @@ function NewProducts() {
                             src={product.imageUrl || "/placeholder.svg"}
                             alt={product.name}
                             fill
-                            className="object-cover rounded-lg"
+                            className="object-contain rounded-lg"
                           />
                           <button
                             className="absolute right-2 top-2 rounded-full bg-white p-1.5"
