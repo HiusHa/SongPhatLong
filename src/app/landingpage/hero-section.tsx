@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import api from "../_utils/globalApi";
+import { MobileBanner } from "./mobile-banner";
 
 // Simplified interfaces
 interface BannerImage {
@@ -105,6 +106,12 @@ export function HeroSection() {
           ...(bannerData.Banner3 || []),
         ].filter((banner): banner is BannerImage => banner !== null);
 
+        // Log for debugging
+        console.log(`Fetched ${allBanners.length} banners`);
+        if (allBanners.length > 0) {
+          console.log("First banner URL:", allBanners[0].url);
+        }
+
         // On mobile, only use the first banner to prevent issues
         if (isMobile) {
           setBannerImages(
@@ -190,55 +197,14 @@ export function HeroSection() {
     };
   }, [isMobile]);
 
-  // Extremely simplified UI for mobile
+  // Use the MobileBanner component for mobile devices
   if (isMobile) {
     return (
-      <div className="w-full">
-        <div className="relative w-full aspect-[3/1]">
-          {!isLoading && bannerImages.length > 0 ? (
-            <div className="relative w-full h-full">
-              {/* Static image for mobile - no transitions or animations */}
-              <Image
-                src={bannerImages[0]?.url || "/placeholder.svg"}
-                alt={bannerImages[0]?.alternativeText || "Banner image"}
-                fill
-                priority={true}
-                sizes="100vw"
-                className="object-cover"
-                quality={50}
-                onError={() => {
-                  // Mark that we had an issue
-                  if (typeof window !== "undefined") {
-                    sessionStorage.setItem("mobileRefreshIssue", "true");
-                  }
-                }}
-              />
-            </div>
-          ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-              <div className="h-24 w-24 bg-gray-300"></div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex justify-center mt-4 font-bold w-full pb-4">
-          <Button
-            variant="secondary"
-            size="lg"
-            className="font-bold bg-green-600 text-white hover:bg-green-700"
-            onClick={() => {
-              if (typeof window !== "undefined") {
-                window.scrollTo({
-                  top: window.innerHeight,
-                  behavior: "smooth",
-                });
-              }
-            }}
-          >
-            Khám phá thêm tại đây !
-          </Button>
-        </div>
-      </div>
+      <MobileBanner
+        imageUrl={bannerImages[0]?.url || "/placeholder.svg"}
+        altText={bannerImages[0]?.alternativeText || "Banner image"}
+        buttonText="Khám phá thêm tại đây !"
+      />
     );
   }
 
@@ -265,6 +231,12 @@ export function HeroSection() {
                     sizes="100vw"
                     className="object-cover"
                     quality={70}
+                    onError={() => {
+                      console.error("Failed to load banner image");
+                      if (typeof window !== "undefined") {
+                        sessionStorage.setItem("mobileRefreshIssue", "true");
+                      }
+                    }}
                   />
                 </div>
               ))}
@@ -287,7 +259,7 @@ export function HeroSection() {
             </div>
           ) : (
             <div className="w-full aspect-[3/1] bg-gray-200 flex items-center justify-center">
-              <div className="h-48 w-48 bg-gray-300"></div>
+              <div className="h-48 w-48 bg-gray-300 animate-pulse rounded"></div>
             </div>
           )}
         </div>
