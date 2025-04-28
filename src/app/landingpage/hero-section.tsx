@@ -1,14 +1,11 @@
 "use client";
 
-import type React from "react";
-
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import api from "../_utils/globalApi";
-import { scrollAnimation, wiggle } from "../../../utils/animations";
 
+// Simplified interfaces
 interface BannerImage {
   id: number;
   url: string;
@@ -22,256 +19,297 @@ interface BannerData {
   Banner3: BannerImage[] | null;
 }
 
+// Static fallback banner
+const FALLBACK_BANNER = {
+  id: 0,
+  url: "/placeholder.svg",
+  alternativeText: "Fallback banner",
+};
+
 export function HeroSection() {
+  // State management
   const [bannerImages, setBannerImages] = useState<BannerImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [hasAnimated, setHasAnimated] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [useMobileMode, setUseMobileMode] = useState(false);
 
-  // Refs
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const buttonRef = useRef<HTMLDivElement>(null);
-  const sectionRef = useRef(null);
-
+  // Refs for safety
   const isMounted = useRef(true);
+  const hasRotated = useRef(false);
 
-  // Fetch banner images only once on component mount
+  // Detect mobile devices
+  useEffect(() => {
+    // Check if we're on a mobile device
+    const checkMobile = () => {
+      const mobile =
+        typeof window !== "undefined" &&
+        (window.innerWidth < 768 ||
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          ));
+
+      setIsMobile(mobile);
+
+      // On mobile, check if we should use mobile mode based on previous issues
+      if (mobile && typeof window !== "undefined") {
+        const hadPreviousIssues =
+          sessionStorage.getItem("mobileRefreshIssue") === "true";
+        setUseMobileMode(hadPreviousIssues);
+      }
+    };
+
+    checkMobile();
+
+    // Add resize listener
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Fetch banner images
   useEffect(() => {
     const fetchBanners = async () => {
-      if (!isMounted.current) return;
-
       try {
-        setIsLoading(true);
+        // If we're in mobile mode due to previous issues, use fallback immediately
+        if (useMobileMode) {
+          setBannerImages([FALLBACK_BANNER]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Set a timeout to prevent hanging
+        const timeoutId = setTimeout(() => {
+          if (isMounted.current) {
+            console.warn("Banner fetch timeout - using fallback");
+            setBannerImages([FALLBACK_BANNER]);
+            setIsLoading(false);
+
+            // Mark that we had an issue
+            if (isMobile && typeof window !== "undefined") {
+              sessionStorage.setItem("mobileRefreshIssue", "true");
+            }
+          }
+        }, 5000);
+
         const response = await api.getBanners();
+        clearTimeout(timeoutId);
 
         if (!isMounted.current) return;
 
         const bannerData: BannerData = response.data.data[0];
 
-        // Combine all banners and filter out nulls
+        // Process banners
         const allBanners = [
           ...(bannerData.Banner1 || []),
           ...(bannerData.Banner2 || []),
           ...(bannerData.Banner3 || []),
         ].filter((banner): banner is BannerImage => banner !== null);
 
-        // Don't duplicate images - this can cause memory issues
-        setBannerImages(allBanners);
+        // On mobile, only use the first banner to prevent issues
+        if (isMobile) {
+          setBannerImages(
+            allBanners.length > 0 ? [allBanners[0]] : [FALLBACK_BANNER]
+          );
+        } else {
+          setBannerImages(
+            allBanners.length > 0 ? allBanners : [FALLBACK_BANNER]
+          );
+        }
       } catch (error) {
         console.error("Error fetching banners:", error);
+        setBannerImages([FALLBACK_BANNER]);
+
+        // Mark that we had an issue
+        if (isMobile && typeof window !== "undefined") {
+          sessionStorage.setItem("mobileRefreshIssue", "true");
+        }
       } finally {
         if (isMounted.current) {
           setIsLoading(false);
-          setHasAnimated(true);
         }
       }
     };
 
     fetchBanners();
 
-    // Cleanup function
     return () => {
       isMounted.current = false;
     };
-  }, []);
+  }, [isMobile, useMobileMode]);
 
-  // Handle banner rotation with safer interval management
+  // Handle banner rotation - ONLY on desktop
   useEffect(() => {
-    // Don't set up interval if no images or component is unmounting
-    if (bannerImages.length === 0 || !isMounted.current) return;
-
-    // Clear any existing interval to prevent memory leaks
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    // Skip rotation on mobile completely
+    if (isMobile || useMobileMode || bannerImages.length <= 1) {
+      return;
     }
 
-    // Set up autoplay with a safer approach
-    const rotateImage = () => {
-      if (!isTransitioning && isMounted.current) {
-        setIsTransitioning(true);
+    let rotationTimer: NodeJS.Timeout | null = null;
 
-        // Use setTimeout instead of state for tracking transition
-        setTimeout(() => {
-          if (isMounted.current) {
-            setActiveIndex((prev) => (prev + 1) % bannerImages.length);
+    const rotateBanner = () => {
+      if (!isMounted.current) return;
 
-            // Reset transitioning state after animation completes
-            setTimeout(() => {
-              if (isMounted.current) {
-                setIsTransitioning(false);
-              }
-            }, 700); // Reduced from 1000ms for better performance
-          }
-        }, 0);
+      try {
+        // Mark that we've rotated at least once
+        hasRotated.current = true;
+
+        // Update the active index
+        setActiveIndex((prev) => (prev + 1) % bannerImages.length);
+      } catch (err) {
+        console.error("Error during banner rotation:", err);
       }
     };
 
-    // Use longer interval on mobile for better performance
-    const intervalTime =
-      typeof window !== "undefined" && window.innerWidth < 768 ? 7000 : 5000;
-    intervalRef.current = setInterval(rotateImage, intervalTime);
+    // Set up rotation timer - desktop only
+    rotationTimer = setInterval(rotateBanner, 6000);
 
-    // Clean up interval on unmount
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (rotationTimer) {
+        clearInterval(rotationTimer);
       }
     };
-  }, [bannerImages.length, isTransitioning]);
+  }, [bannerImages.length, isMobile, useMobileMode]);
 
-  // Cleanup all intervals and timers on unmount
+  // Handle errors during render
   useEffect(() => {
-    return () => {
-      isMounted.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+    // Set up error handler
+    const originalError = console.error;
+
+    console.error = (...args) => {
+      // If we detect an error and we're on mobile, mark it
+      if (isMobile && typeof window !== "undefined") {
+        sessionStorage.setItem("mobileRefreshIssue", "true");
       }
+
+      // Call original handler
+      originalError(...args);
     };
-  }, []);
 
-  const handleExplore = () => {
-    const buttonHeight = buttonRef.current?.offsetHeight || 0;
-    window.scrollTo({
-      top: window.innerHeight + buttonHeight,
-      behavior: "smooth",
-    });
-  };
+    return () => {
+      console.error = originalError;
+    };
+  }, [isMobile]);
 
-  const handleManualChange = (index: number) => {
-    if (isTransitioning) return;
+  // Extremely simplified UI for mobile
+  if (isMobile) {
+    return (
+      <div className="w-full">
+        <div className="relative w-full aspect-[3/1]">
+          {!isLoading && bannerImages.length > 0 ? (
+            <div className="relative w-full h-full">
+              {/* Static image for mobile - no transitions or animations */}
+              <Image
+                src={bannerImages[0]?.url || "/placeholder.svg"}
+                alt={bannerImages[0]?.alternativeText || "Banner image"}
+                fill
+                priority={true}
+                sizes="100vw"
+                className="object-cover"
+                quality={50}
+                onError={() => {
+                  // Mark that we had an issue
+                  if (typeof window !== "undefined") {
+                    sessionStorage.setItem("mobileRefreshIssue", "true");
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+              <div className="h-24 w-24 bg-gray-300"></div>
+            </div>
+          )}
+        </div>
 
-    // Clear the autoplay interval when manually changing
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    setIsTransitioning(true);
-    setActiveIndex(index);
-
-    // Reset transitioning state after animation completes
-    setTimeout(() => {
-      if (isMounted.current) {
-        setIsTransitioning(false);
-
-        // Restart the interval after manual change
-        const intervalTime =
-          typeof window !== "undefined" && window.innerWidth < 768
-            ? 7000
-            : 5000;
-        intervalRef.current = setInterval(() => {
-          if (!isTransitioning && isMounted.current) {
-            setIsTransitioning(true);
-            setActiveIndex((prev) => (prev + 1) % bannerImages.length);
-
-            setTimeout(() => {
-              if (isMounted.current) {
-                setIsTransitioning(false);
+        <div className="flex justify-center mt-4 font-bold w-full pb-4">
+          <Button
+            variant="secondary"
+            size="lg"
+            className="font-bold bg-green-600 text-white hover:bg-green-700"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.scrollTo({
+                  top: window.innerHeight,
+                  behavior: "smooth",
+                });
               }
-            }, 700);
-          }
-        }, intervalTime);
-      }
-    }, 700); // Reduced from 1000ms
-  };
+            }}
+          >
+            Khám phá thêm tại đây !
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  const SkeletonLoader = () => (
-    <div className="animate-pulse flex items-center justify-center h-full w-full bg-gray-200 aspect-[3/1]">
-      <div className="h-24 w-24 md:h-48 md:w-48 bg-gray-300"></div>
-    </div>
-  );
-
+  // Desktop version with more features
   return (
     <div className="w-full flex justify-center items-center">
-      <motion.section
-        ref={sectionRef}
-        initial="offscreen"
-        animate={hasAnimated ? "onscreen" : "offscreen"}
-        variants={scrollAnimation}
-        className="relative w-full overflow-hidden flex flex-col items-center"
-      >
+      <section className="relative w-full overflow-hidden flex flex-col items-center">
         <div className="relative w-full overflow-hidden">
           {!isLoading && bannerImages.length > 0 ? (
             <div className="relative w-full mx-auto aspect-[3/1]">
-              {/* Only render the active image and the next one to save memory */}
-              {bannerImages.map((banner, index) => {
-                // Only render the active image and the next one (for preloading)
-                const shouldRender =
-                  index === activeIndex ||
-                  index === (activeIndex + 1) % bannerImages.length;
+              {/* Desktop version with transitions */}
+              {bannerImages.map((banner, index) => (
+                <div
+                  key={`${banner.id}-${index}`}
+                  className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${
+                    activeIndex === index ? "opacity-100 z-10" : "opacity-0 z-0"
+                  }`}
+                >
+                  <Image
+                    src={banner.url || "/placeholder.svg"}
+                    alt={banner.alternativeText || "Banner image"}
+                    fill
+                    priority={index === activeIndex}
+                    sizes="100vw"
+                    className="object-cover"
+                    quality={70}
+                  />
+                </div>
+              ))}
 
-                if (!shouldRender) return null;
-
-                return (
-                  <div
-                    key={`${banner.id}-${index}`}
-                    className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${
-                      activeIndex === index
-                        ? "opacity-100 z-10"
-                        : "opacity-0 z-0"
-                    }`}
-                  >
-                    <Image
-                      src={banner.url || "/placeholder.svg"}
-                      alt={banner.alternativeText || "Banner image"}
-                      fill
-                      priority={index === activeIndex}
-                      sizes="100vw"
-                      className="object-cover"
-                      // Remove unoptimized for better performance
-                      quality={70} // Reduced quality for better performance
-                      onError={(
-                        e: React.SyntheticEvent<HTMLImageElement, Event>
-                      ) => {
-                        console.error(`Failed to load image: ${banner.url}`);
-                        // Provide fallback
-                        (e.target as HTMLImageElement).src = "/placeholder.svg";
-                      }}
-                    />
-                  </div>
-                );
-              })}
-
-              {/* Navigation dots */}
-              <div className="absolute bottom-2 md:bottom-6 left-0 right-0 flex justify-center gap-2 md:gap-3 z-20">
+              {/* Navigation dots - desktop only */}
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 z-20">
                 {bannerImages.map((_, index) => (
                   <button
                     key={index}
-                    className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-all duration-300 ${
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
                       activeIndex === index
                         ? "bg-white scale-125 shadow-lg"
                         : "bg-white/50 hover:bg-white/70"
                     }`}
-                    onClick={() => handleManualChange(index)}
+                    onClick={() => setActiveIndex(index)}
                     aria-label={`Go to slide ${index + 1}`}
                   />
                 ))}
               </div>
             </div>
           ) : (
-            <SkeletonLoader />
+            <div className="w-full aspect-[3/1] bg-gray-200 flex items-center justify-center">
+              <div className="h-48 w-48 bg-gray-300"></div>
+            </div>
           )}
         </div>
-        <div
-          className="flex justify-center mt-4 font-bold w-full pb-4 md:pb-8"
-          ref={buttonRef}
-        >
-          <motion.div variants={wiggle} whileHover="hover">
-            <Button
-              variant="secondary"
-              size="lg"
-              className="font-bold bg-green-600 text-white hover:bg-green-700 transition-colors duration-300"
-              onClick={handleExplore}
-            >
-              Khám phá thêm tại đây !
-            </Button>
-          </motion.div>
+
+        <div className="flex justify-center mt-4 font-bold w-full pb-8">
+          <Button
+            variant="secondary"
+            size="lg"
+            className="font-bold bg-green-600 text-white hover:bg-green-700 transition-colors duration-300"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.scrollTo({
+                  top: window.innerHeight,
+                  behavior: "smooth",
+                });
+              }
+            }}
+          >
+            Khám phá thêm tại đây !
+          </Button>
         </div>
-      </motion.section>
+      </section>
     </div>
   );
 }

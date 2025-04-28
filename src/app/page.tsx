@@ -1,11 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { HeroSection } from "./landingpage/hero-section";
 import { CTASection } from "./landingpage/cta-section";
 import { ProductCategories } from "./landingpage/product-categories";
 import { FeaturedProjects } from "./landingpage/featured-projects";
 import { Loader } from "@/components/loader";
-import { useEffect, useState } from "react";
 import NewProducts from "./landingpage/new-products";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { SectionError } from "@/components/ui/section-error";
@@ -14,16 +14,32 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [fadeIn, setFadeIn] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile devices
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const mobile =
+        window.innerWidth < 768 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        );
+
+      setIsMobile(mobile);
+
+      // Use shorter animations on mobile
+      if (mobile) {
+        document.documentElement.style.setProperty(
+          "--transition-duration",
+          "300ms"
+        );
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    // Scroll to top when page loads - use a more gentle approach
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "auto" });
-    }
-
-    // Use a shorter loading time to reduce memory pressure
-    const loadingTime =
-      typeof window !== "undefined" && window.innerWidth < 768 ? 500 : 1000;
+    // Use a shorter loading time on mobile
+    const loadingTime = isMobile ? 300 : 1000;
 
     let timer: NodeJS.Timeout;
 
@@ -31,7 +47,7 @@ export default function Home() {
       timer = setTimeout(() => {
         setIsLoading(false);
         // Add a small delay before starting the fade-in animation
-        setTimeout(() => setFadeIn(true), 50);
+        setTimeout(() => setFadeIn(true), isMobile ? 10 : 50);
       }, loadingTime);
     } catch (err) {
       const error =
@@ -43,9 +59,9 @@ export default function Home() {
     return () => {
       clearTimeout(timer);
     };
-  }, []);
+  }, [isMobile]);
 
-  // If there's an error, show a simple error message instead of crashing
+  // If there's an error, show a simple error message
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
@@ -69,16 +85,25 @@ export default function Home() {
         </div>
       ) : (
         <div
-          className={`min-h-screen bg-white transition-opacity duration-500 ${
-            fadeIn ? "opacity-100" : "opacity-0"
-          }`}
+          className={`min-h-screen bg-white ${
+            isMobile ? "" : "transition-opacity duration-300"
+          } ${fadeIn ? "opacity-100" : "opacity-0"}`}
         >
           <main className="w-full max-w-[1400px] mx-auto pt-4">
+            {/* Use a more aggressive error boundary for the HeroSection */}
             <ErrorBoundary
-              fallback={<SectionError section="Hero" />}
-              onError={(error: Error) =>
-                console.error("Hero section error:", error)
+              fallback={
+                <div className="w-full aspect-[3/1] bg-gray-100 flex items-center justify-center">
+                  <p className="text-gray-500">Unable to load banner images</p>
+                </div>
               }
+              onError={(error: Error) => {
+                console.error("Hero section error:", error);
+                // Mark that we had an error
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("mobileRefreshIssue", "true");
+                }
+              }}
             >
               <HeroSection />
             </ErrorBoundary>
