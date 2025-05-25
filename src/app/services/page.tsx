@@ -8,7 +8,7 @@ import { Loader } from "@/components/loader";
 import api from "../_utils/globalApi";
 import { StrapiService, StrapiResponse } from "../types/service";
 import { ServiceCard } from "./service-card";
-
+import { useRouter } from "next/navigation";
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -16,6 +16,7 @@ const pageVariants = {
 };
 
 export default function ServicesPage() {
+  const router = useRouter();
   const [services, setServices] = useState<StrapiService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -77,7 +78,10 @@ export default function ServicesPage() {
                   <br />
                   Thiết Bị và Giải Pháp PCCC
                 </h1>
-                <Button className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-3 rounded-full text-lg font-semibold">
+                <Button
+                  onClick={() => router.push("/contact")}
+                  className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-3 rounded-full text-lg font-semibold"
+                >
                   Liên hệ ngay
                 </Button>
               </div>

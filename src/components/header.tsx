@@ -1,5 +1,7 @@
 "use client";
 
+import { SheetTrigger } from "@/components/ui/sheet";
+
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,7 +12,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
   SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,8 @@ export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const router = useRouter();
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
     { href: "/products", label: "Sản phẩm" },
@@ -81,7 +84,7 @@ export function Header() {
   };
 
   const CartContent = () => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col  h-full">
       <SheetHeader>
         <SheetTitle className="text-2xl font-bold">Giỏ hàng của bạn</SheetTitle>
         <SheetDescription>
@@ -148,13 +151,26 @@ export function Header() {
             {totalPrice.toLocaleString("vi-VN")}đ
           </span>
         </div>
-        <Button
-          className="w-full bg-red-600 hover:bg-red-700 text-white"
-          size="lg"
-          onClick={() => router.push("/check-out")}
-        >
-          Thanh toán
-        </Button>
+        <div className="space-y-3">
+          <Button
+            variant="outline"
+            className="w-full"
+            size="lg"
+            onClick={() => setIsCartOpen(false)}
+          >
+            Tiếp tục mua sắm
+          </Button>
+          <Button
+            className="w-full bg-red-600 hover:bg-red-700 text-white"
+            size="lg"
+            onClick={() => {
+              setIsCartOpen(false);
+              router.push("/check-out");
+            }}
+          >
+            Thanh toán
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -183,7 +199,7 @@ export function Header() {
 
           {/* Mobile Menu and Cart */}
           <div className="md:hidden flex items-center space-x-2">
-            <Sheet>
+            <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
@@ -198,11 +214,14 @@ export function Header() {
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:w-[400px]">
+              <SheetContent
+                side="right"
+                className="w-full sm:w-[400px] [&~div]:bg-white/20  shadow-none"
+              >
                 <CartContent />
               </SheetContent>
             </Sheet>
-            <Sheet>
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <Menu className="h-10 w-10" />
@@ -221,6 +240,7 @@ export function Header() {
                       key={item.href}
                       href={item.href}
                       className="text-xl font-medium hover:text-[#ff0000] transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {item.label}
                     </Link>
@@ -237,7 +257,7 @@ export function Header() {
                 Giới thiệu
               </Button>
             </Link>
-            <Sheet>
+            <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
@@ -252,7 +272,10 @@ export function Header() {
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[400px]">
+              <SheetContent
+                side="right"
+                className="w-[400px] [&~div]:bg-black/20 shadow-none"
+              >
                 <CartContent />
               </SheetContent>
             </Sheet>
