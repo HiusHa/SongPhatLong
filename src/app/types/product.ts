@@ -36,6 +36,51 @@ export interface ProductImage {
   url: string;
 }
 
+export interface ProductVideo {
+  id: number;
+  documentId: string;
+  name: string;
+  alternativeText: string | null;
+  caption: string | null;
+  width?: number;
+  height?: number;
+  formats?: {
+    small?: ImageFormat;
+    medium?: ImageFormat;
+    thumbnail?: ImageFormat;
+  };
+  hash: string;
+  ext: string;
+  mime: string;
+  size: number;
+  previewUrl: string | null;
+  provider: string;
+  provider_metadata: null;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+  url: string;
+}
+
+export interface ProductDocument {
+  id: number;
+  documentId: string;
+  name: string;
+  alternativeText: string | null;
+  caption: string | null;
+  hash: string;
+  ext: string;
+  mime: string;
+  size: number;
+  previewUrl: string | null;
+  provider: string;
+  provider_metadata: null;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+  url: string;
+}
+
 export interface Category {
   id: number;
   documentId: string;
@@ -51,6 +96,7 @@ interface TextNode {
   type: string;
   bold?: boolean;
   italic?: boolean;
+  underline?: boolean;
 }
 
 export interface StrapiProduct {
@@ -77,6 +123,8 @@ export interface StrapiProduct {
   origin: string | null;
   rating?: number;
   bought?: number;
+  productVideo?: ProductVideo | ProductVideo[] | null;
+  documents?: ProductDocument | ProductDocument[] | null;
 }
 
 export interface CartItem {

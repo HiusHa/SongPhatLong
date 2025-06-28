@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,11 +18,15 @@ import {
   X,
   Plus,
   Minus,
+  Download,
+  FileText,
+  Play,
+  Eye,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/loader";
 import type { ProductImage, StrapiProduct } from "@/app/types/product";
-
 import { toast, Toaster } from "react-hot-toast";
 import { addToCart } from "../../../../utils/cartUtils";
 
@@ -36,7 +39,6 @@ export default function ProductDetailPage() {
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
   const [showMagnifier, setShowMagnifier] = useState(false);
   const imageRef = useRef<HTMLDivElement>(null);
-
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -47,6 +49,9 @@ export default function ProductDetailPage() {
         );
         const data = await response.json();
         setProduct(data.data);
+        console.log("Product data:", data.data); // Debug log
+        console.log("Product documents:", data.data?.documents); // Debug documents
+        console.log("Product video:", data.data?.productVideo); // Debug video
       } catch (error) {
         console.error("Error fetching product:", error);
       } finally {
@@ -79,12 +84,10 @@ export default function ProductDetailPage() {
   const handleMouseMove = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (!imageRef.current) return;
-
       const { left, top, width, height } =
         imageRef.current.getBoundingClientRect();
       const x = ((event.clientX - left) / width) * 100;
       const y = ((event.clientY - top) / height) * 100;
-
       setZoomPosition({ x, y });
     },
     []
@@ -120,24 +123,16 @@ export default function ProductDetailPage() {
   const getProductImages = useCallback(
     (product: StrapiProduct): ProductImage[] => {
       const images: ProductImage[] = [];
-
-      // Handle image (direct object)
       if (product.image) images.push(product.image);
-
-      // Handle image2 (could be array or object)
       if (product.image2) {
         if (Array.isArray(product.image2)) {
-          // If it's an array, add each item
           product.image2.forEach((img) => {
             if (img) images.push(img);
           });
         } else {
-          // If it's a direct object
           images.push(product.image2);
         }
       }
-
-      // Handle remaining images
       if (product.image3) {
         if (Array.isArray(product.image3)) {
           product.image3.forEach((img) => {
@@ -147,7 +142,6 @@ export default function ProductDetailPage() {
           images.push(product.image3);
         }
       }
-
       if (product.image4) {
         if (Array.isArray(product.image4)) {
           product.image4.forEach((img) => {
@@ -157,7 +151,6 @@ export default function ProductDetailPage() {
           images.push(product.image4);
         }
       }
-
       if (product.image5) {
         if (Array.isArray(product.image5)) {
           product.image5.forEach((img) => {
@@ -167,7 +160,6 @@ export default function ProductDetailPage() {
           images.push(product.image5);
         }
       }
-
       return images.filter((img): img is ProductImage => img !== null);
     },
     []
@@ -188,6 +180,27 @@ export default function ProductDetailPage() {
     }
   };
 
+  const handleDownload = (url: string, filename: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Đang tải xuống...", { duration: 2000 });
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return (
+      Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+    );
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -197,6 +210,20 @@ export default function ProductDetailPage() {
   }
 
   const productImages = getProductImages(product);
+
+  // Handle productVideo - could be single object, array, or null
+  const productVideo = product.productVideo
+    ? Array.isArray(product.productVideo)
+      ? product.productVideo[0]
+      : product.productVideo
+    : null;
+
+  // Handle documents - could be single object, array, or null
+  const documentsArray = product.documents
+    ? Array.isArray(product.documents)
+      ? product.documents
+      : [product.documents]
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -264,6 +291,7 @@ export default function ProductDetailPage() {
                 />
               )}
             </div>
+
             {productImages.length > 1 && (
               <div className="flex mt-4 gap-4 overflow-x-auto">
                 {productImages.map((img, index) => (
@@ -376,7 +404,7 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-2">
                 <Phone className="h-5 w-5 text-red-600" />
                 <a
-                  href="tel:0985849199"
+                  href="tel:0905799385"
                   className="text-gray-700 hover:text-red-600"
                 >
                   0905799385
@@ -400,27 +428,137 @@ export default function ProductDetailPage() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="hover:text-blue-600"
+                  className="hover:text-blue-600 bg-transparent"
                 >
                   <Facebook className="h-5 w-5" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="hover:text-blue-400"
+                  className="hover:text-blue-400 bg-transparent"
                 >
                   <Twitter className="h-5 w-5" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="hover:text-blue-700"
+                  className="hover:text-blue-700 bg-transparent"
                 >
                   <Linkedin className="h-5 w-5" />
                 </Button>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Product Video Section */}
+        {productVideo && (
+          <div className="mt-8 bg-white p-6 rounded-lg shadow-sm">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Play className="h-6 w-6 text-red-600" />
+              Video sản phẩm
+            </h2>
+            <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+              <video
+                controls
+                className="w-full h-full object-cover"
+                poster={productImages[0]?.url || "/placeholder.svg"}
+              >
+                <source src={productVideo.url} type={productVideo.mime} />
+                Trình duyệt của bạn không hỗ trợ video.
+              </video>
+            </div>
+            <div className="mt-2 text-sm text-gray-600">
+              <p>{productVideo.name}</p>
+              <p>Kích thước: {formatFileSize(productVideo.size)}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Product Documents/Catalog Section */}
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-sm">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <FileText className="h-6 w-6 text-red-600" />
+            Tài liệu & Catalog
+          </h2>
+
+          {documentsArray.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {documentsArray.map((doc, index) => (
+                <div
+                  key={index}
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="font-medium text-gray-900 truncate"
+                        title={doc.name}
+                      >
+                        {doc.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {doc.ext?.toUpperCase()} • {formatFileSize(doc.size)}
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(doc.url, "_blank")}
+                          className="flex items-center gap-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          Xem
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleDownload(doc.url, doc.name)}
+                          className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-1"
+                        >
+                          <Download className="h-4 w-4" />
+                          Tải về
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+              <div className="max-w-md mx-auto">
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Upload className="h-10 w-10 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  Chưa có tài liệu catalog
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Sản phẩm này chưa có tài liệu kỹ thuật hoặc catalog.
+                  <br />
+                  Vui lòng liên hệ để được hỗ trợ thêm thông tin chi tiết.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Link href="/contact">
+                    <Button className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Yêu cầu catalog
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 bg-transparent"
+                  >
+                    <Phone className="h-4 w-4" />
+                    Gọi tư vấn: 0905799385
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Technical Specifications Table */}
@@ -454,14 +592,16 @@ export default function ProductDetailPage() {
                   <p key={index} className="text-gray-700">
                     {paragraph.children &&
                       paragraph.children.map((child, childIndex) => {
-                        // Handle different text formatting
-                        if (child.bold) {
-                          return <strong key={childIndex}>{child.text}</strong>;
-                        } else if (child.italic) {
-                          return <em key={childIndex}>{child.text}</em>;
-                        } else {
-                          return <span key={childIndex}>{child.text}</span>;
-                        }
+                        let className = "";
+                        if (child.bold) className += "font-bold ";
+                        if (child.underline) className += "underline ";
+                        if (child.italic) className += "italic ";
+
+                        return (
+                          <span key={childIndex} className={className.trim()}>
+                            {child.text}
+                          </span>
+                        );
                       })}
                   </p>
                 ))}
