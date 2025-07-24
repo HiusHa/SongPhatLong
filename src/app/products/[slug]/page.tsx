@@ -412,7 +412,7 @@ export default function ProductDetailPage() {
                 <p className="text-4xl font-bold text-red-600 mb-2">
                   {product.pricing.toLocaleString("vi-VN")}₫
                 </p>
-                <p className="text-gray-600">Giá đã bao gồm VAT</p>
+                {/* <p className="text-gray-600">Giá đã bao gồm VAT</p> */}
               </div>
 
               {/* Product Details */}
