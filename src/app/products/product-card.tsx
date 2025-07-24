@@ -1,115 +1,166 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { useState } from "react";
-import { Star, StarHalf } from "lucide-react";
-import type { StrapiProduct } from "../types/product";
+import { Star, ShoppingCart, Eye } from "lucide-react";
+import type { StrapiProduct } from "@/app/types/product";
+import { getProductUrl } from "../../../utils/slugtify";
 
 interface ProductCardProps {
   product: StrapiProduct;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
-  const [imageError, setImageError] = useState(false);
+export default function ProductCard({ product }: ProductCardProps) {
+  // ✅ SỬ DỤNG FUNCTION THÔNG MINH để tạo URL
+  const productUrl = getProductUrl(product);
 
-  const getImageUrl = () => {
-    if (imageError || !product?.image?.url) {
-      return `/placeholder.svg?height=300&width=300&text=${encodeURIComponent(
-        product?.name
-      )}`;
-    }
-
-    return `${product.image.url}`;
-  };
-
-  const getImageAlt = () => {
-    return product?.image?.alternativeText || product?.name;
-  };
+  console.log(`🔗 ProductCard URL for ${product.name}:`, productUrl);
+  console.log(`🏷️  SlugURL:`, product.SlugURL);
 
   const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-      );
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <StarHalf
-          key="half"
-          className="w-4 h-4 text-yellow-400 fill-yellow-400"
-        />
-      );
-    }
-
-    const emptyStars = 5 - stars.length;
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<Star key={`empty-${i}`} className="w-4 h-4 text-gray-300" />);
-    }
-
-    return stars;
+    return (
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${
+              rating >= star
+                ? "text-yellow-400 fill-yellow-400"
+                : "text-gray-300"
+            }`}
+          />
+        ))}
+        <span className="text-sm text-gray-600 ml-1">({rating})</span>
+      </div>
+    );
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.8 }}
-      className="h-full"
-    >
-      <Link
-        href={`/products/${product.documentId}`}
-        className="group block h-full"
-      >
-        <div className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
-          <div className="relative aspect-square w-full">
-            <Image
-              src={getImageUrl() || "/placeholder.svg"}
-              alt={getImageAlt()}
-              layout="fill"
-              objectFit="fill"
-              className="transition-transform duration-300 group-hover:scale-105"
-              onError={() => setImageError(true)}
-              unoptimized
-            />
+    <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-red-200">
+      <Link href={productUrl}>
+        {/* Image Section */}
+        <div className="relative h-64 overflow-hidden">
+          <Image
+            src={product.image?.url || "/placeholder.svg?height=300&width=400"}
+            alt={product.image?.alternativeText || product.name}
+            fill
+            className="object-contain group-hover:scale-105 transition-transform duration-300"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
+
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300" />
+
+          {/* Quick Actions */}
+          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="flex flex-col gap-2">
+              <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-50 transition-colors">
+                <Eye className="h-5 w-5 text-gray-600" />
+              </button>
+              <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-50 transition-colors">
+                <ShoppingCart className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
           </div>
-          <div className="p-4 flex flex-col flex-grow">
-            <h3 className="font-semibold text-lg mb-2 group-hover:text-red-600 line-clamp-2">
-              {product?.name}
-            </h3>
 
-            {product.rating && (
-              <div className="flex items-center mb-1">
-                {renderStars(product.rating)}
-                <span className="ml-1 text-sm text-gray-600">
-                  ({product.rating.toFixed(1)})
-                </span>
+          {/* Badge */}
+          {product.originalPrice && (
+            <div className="absolute top-4 left-4">
+              <span className="bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                Giảm giá
+              </span>
+            </div>
+          )}
+
+          {/* Slug Status Badge - chỉ hiển thị khi dev mode */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="absolute bottom-4 left-4">
+              <span
+                className={`px-2 py-1 rounded text-xs font-medium ${
+                  product.SlugURL
+                    ? "bg-green-100 text-green-800"
+                    : "bg-yellow-100 text-yellow-800"
+                }`}
+              >
+                {product.SlugURL ? "Custom Slug" : "Auto Slug"}
+              </span>
+              {/* Hiển thị URL sẽ được tạo */}
+              <div className="mt-1 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                URL: {productUrl}
               </div>
-            )}
+            </div>
+          )}
+        </div>
 
-            {product.bought && (
-              <p className="text-sm text-gray-600 mb-2">
-                Đã bán: {product.bought}
+        {/* Content Section */}
+        <div className="p-6">
+          {/* Category & Brand */}
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm text-red-600 font-medium bg-red-50 px-3 py-1 rounded-full">
+              {product.categories?.[0]?.name || "PCCC"}
+            </span>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              {product.brand || "N/A"}
+            </span>
+          </div>
+
+          {/* Product Name */}
+          <h3 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-red-600 transition-colors">
+            {product.name}
+          </h3>
+
+          {/* Rating */}
+          {product.rating && (
+            <div className="mb-3">{renderStars(product.rating)}</div>
+          )}
+
+          {/* Origin */}
+          <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+            Xuất xứ: {product.origin || "N/A"}
+          </p>
+
+          {/* Price Section */}
+          <div className="space-y-2">
+            {product.originalPrice && (
+              <p className="text-sm text-gray-500 line-through">
+                {product.originalPrice.toLocaleString("vi-VN")}₫
               </p>
             )}
-
-            <div className="mt-auto space-y-1">
-              <p className="text-base text-gray-500 line-through">
-                {(product.pricing * 1.2).toLocaleString("vi-VN")}₫
-              </p>
-              <p className="text-xl font-bold text-red-600">
+            <div className="flex items-center justify-between">
+              <p className="text-2xl font-bold text-red-600">
                 {product.pricing.toLocaleString("vi-VN")}₫
               </p>
+              {product.originalPrice && (
+                <span className="text-sm bg-red-100 text-red-600 px-2 py-1 rounded font-medium">
+                  -
+                  {Math.round(
+                    ((product.originalPrice - product.pricing) /
+                      product.originalPrice) *
+                      100
+                  )}
+                  %
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-red-600 group-hover:text-red-700 transition-colors">
+                Xem chi tiết →
+              </span>
+              {product.bought && (
+                <span className="text-xs text-gray-500">
+                  Đã bán:{" "}
+                  {typeof product.bought === "string"
+                    ? product.bought
+                    : product.bought}
+                </span>
+              )}
             </div>
           </div>
         </div>
       </Link>
-    </motion.div>
+    </div>
   );
 }

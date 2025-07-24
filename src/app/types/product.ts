@@ -102,6 +102,7 @@ interface TextNode {
 export interface StrapiProduct {
   id: number;
   documentId: string;
+  SlugURL?: string | null; // Slug field từ Strapi - có thể null
   name: string;
   description: Array<{
     type: string;

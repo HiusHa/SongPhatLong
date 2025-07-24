@@ -34,11 +34,21 @@ export default function ProductPage() {
     try {
       const response = await api.getLatestProducts();
       console.log("API Response:", response);
+
       if (response && response.data) {
-        const strapiResponse = response.data as { data: StrapiProduct[] };
-        setProducts(strapiResponse.data);
+        // Kiểm tra cấu trúc response
+        if (Array.isArray(response.data)) {
+          // Nếu response.data là array trực tiếp
+          setProducts(response.data);
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          // Nếu response.data.data là array
+          setProducts(response.data.data);
+        } else {
+          console.error("Unexpected API response structure:", response);
+          setProducts([]);
+        }
       } else {
-        console.error("Unexpected API response structure:", response);
+        console.error("No data in response:", response);
         setProducts([]);
       }
     } catch (error) {
@@ -54,7 +64,7 @@ export default function ProductPage() {
   }, [getLatestProducts]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {isLoading ? (
         <div className="flex justify-center items-center h-screen">
           <Loader />
@@ -69,18 +79,23 @@ export default function ProductPage() {
           className="container mx-auto px-4 py-8"
         >
           <Banner />
-          <div className="mb-6">
+
+          {/* Search Section */}
+          <div className="mb-8">
             <SearchInput onSearch={handleSearch} />
           </div>
-          <div className="flex flex-col md:flex-row gap-8">
+
+          {/* Main Content */}
+          <div className="flex flex-col lg:flex-row gap-8">
             <motion.aside
-              className="w-full md:w-64 shrink-0"
+              className="w-full lg:w-80 shrink-0"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4, duration: 0.5 }}
             >
               <Sidebar onCategoryChange={handleCategoryChange} />
             </motion.aside>
+
             <motion.main
               className="flex-1"
               initial={{ opacity: 0, x: 20 }}
