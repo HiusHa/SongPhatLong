@@ -1,82 +1,97 @@
+// app/services/[slug]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { Loader } from "@/components/loader";
-import type { StrapiService } from "../../types/service";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Loader } from "@/components/loader";
+import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
+import slugifyLib from "slugify";
+import type { StrapiService } from "../../types/service";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.6 },
 };
-
 const staggerChildren = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+  animate: { transition: { staggerChildren: 0.1 } },
 };
 
+// Helper: ưu tiên SlugURL, fallback slugify(serviceName)
+function makeSlug(s: StrapiService) {
+  return (
+    s.slugURL?.trim() ||
+    slugifyLib(s.serviceName, { lower: true, strict: true })
+  );
+}
+
 export default function ServiceDetails() {
-  const { documentId } = useParams();
+  // lấy param `slug` thay vì `documentId`
+  const { slug } = useParams<{ slug: string }>();
+  const router = useRouter();
   const [service, setService] = useState<StrapiService | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    const fetchService = async () => {
-      try {
-        const response = await fetch(
-          `https://songphatlong-admin.onrender.com/api/services/${documentId}?populate=*`
-        );
-        const data = await response.json();
-        console.log("API Response:", data);
-        setService(data.data);
-      } catch (error) {
-        console.error("Error fetching service:", error);
-      } finally {
+    (async () => {
+      if (!slug) {
         setIsLoading(false);
+        return;
       }
-    };
 
-    fetchService();
-  }, [documentId]);
+      // 1) Lấy toàn bộ list
+      const resp = await fetch(
+        "https://songphatlong-admin.onrender.com/api/services?populate=*"
+      );
+      const json = await resp.json();
+      const all: StrapiService[] = json.data;
 
-  const getImageUrl = () => {
-    if (imageError || !service?.serviceImage?.[0]?.url) {
-      return `/placeholder.svg?height=600&width=400&text=${encodeURIComponent(
-        service?.serviceName || "Service Image"
-      )}`;
-    }
-    return `${service.serviceImage[0].url}`;
-  };
+      // 2) Sinh ra __slug cho mỗi item
+      const withSlug = all.map((s) => ({
+        ...s,
+        __slug: makeSlug(s),
+      }));
 
-  const getImageAlt = () => {
-    return (
-      service?.serviceImage?.[0]?.alternativeText ||
-      service?.serviceName ||
-      "Service Image"
-    );
-  };
+      // 3) Tìm theo slug mới hoặc fallback documentId
+      const found =
+        withSlug.find((s) => s.__slug === slug) ||
+        withSlug.find((s) => s.documentId === slug);
+
+      if (!found) {
+        router.replace("/services");
+      } else {
+        setService(found);
+      }
+      setIsLoading(false);
+    })();
+  }, [slug, router]);
 
   if (isLoading) {
-    return <Loader />;
-  }
-
-  if (!service) {
     return (
-      <div className="text-2xl font-bold text-center py-12">
-        Service not found
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader />
       </div>
     );
   }
+  if (!service) return null; // đã redirect
+
+  // Giữ nguyên logic getImageUrl/getImageAlt
+  const getImageUrl = () => {
+    const img = service.serviceImage?.[0];
+    if (imageError || !img?.url) {
+      return `/placeholder.svg?height=600&width=400&text=${encodeURIComponent(
+        service.serviceName
+      )}`;
+    }
+    return img.url;
+  };
+  const getImageAlt = () =>
+    service.serviceImage?.[0]?.alternativeText || service.serviceName;
 
   return (
     <motion.div
@@ -90,17 +105,14 @@ export default function ServiceDetails() {
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[#cc0000] skew-x-12 transform origin-top-right" />
 
         <div className="container mx-auto px-4 py-12 relative max-w-[1440px]">
-          {/* Header section with improved contrast */}
+          {/* Header */}
           <motion.div
             className="flex flex-col md:flex-row items-center mb-8 md:mb-12 relative z-10"
             variants={fadeInUp}
           >
             <div className="w-24 h-24 relative mb-4 md:mb-0">
-              <div className="w-24 h-24 relative mb-4 md:mb-0">
-                <Logo />
-              </div>
+              <Logo />
             </div>
-            {/* Thêm background cho tiêu đề để tăng độ tương phản */}
             <div className="bg-white/90 px-6 py-3 rounded-lg shadow-md md:ml-6">
               <h1 className="text-3xl md:text-4xl font-bold text-red-600 text-center md:text-left">
                 {service.serviceName}
@@ -110,23 +122,22 @@ export default function ServiceDetails() {
 
           {/* Main content */}
           <div className="flex flex-col md:grid md:grid-cols-2 gap-8 md:gap-12 items-start">
-            {/* Service Image */}
+            {/* Image */}
             <motion.div
               className="relative w-full h-[400px] md:h-[500px] order-1 md:order-2"
               variants={fadeInUp}
             >
               <Image
-                src={getImageUrl() || "/placeholder.svg"}
+                src={getImageUrl()}
                 alt={getImageAlt()}
-                layout="fill"
-                objectFit="cover"
-                className="rounded-lg shadow-lg" // Thêm shadow
+                fill
+                className="rounded-lg shadow-lg object-cover"
                 onError={() => setImageError(true)}
                 unoptimized
               />
             </motion.div>
 
-            {/* Service steps */}
+            {/* Steps */}
             <motion.div
               className="space-y-6 md:space-y-8 order-2 md:order-1 w-full"
               variants={staggerChildren}
@@ -177,7 +188,7 @@ export default function ServiceDetails() {
             <Link href="/contact">
               <Button
                 size="xl"
-                className="bg-green-600 text-white px-8 md:px-12 py-4 md:py-5 rounded-full text-xl md:text-2xl font-bold hover:bg-green-700 transition-colors duration-300 w-full md:w-auto shadow-lg" // Thêm shadow
+                className="bg-green-600 text-white px-8 md:px-12 py-4 md:py-5 rounded-full text-xl md:text-2xl font-bold hover:bg-green-700 transition-colors duration-300 w-full md:w-auto shadow-lg"
               >
                 Liên hệ ngay
               </Button>
@@ -196,7 +207,6 @@ interface ServiceStepProps {
   isActive?: boolean;
   service: StrapiService;
 }
-
 function ServiceStep({
   number,
   title,
@@ -216,7 +226,7 @@ function ServiceStep({
         <div className="absolute left-3 md:left-4 top-10 w-1 h-full md:h-32 bg-red-500" />
       )}
 
-      {/* Number circle */}
+      {/* Number */}
       <div className="absolute left-0 top-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-600 text-white flex items-center justify-center font-bold text-lg md:text-xl shadow-md">
         {number}
       </div>

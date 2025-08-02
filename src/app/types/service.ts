@@ -38,6 +38,9 @@ export interface ServiceImage {
 }
 
 export interface StrapiService {
+  __slug?: string;
+  slugURL?: string;
+  slug?: string;
   id: number;
   documentId: string;
   serviceName: string;

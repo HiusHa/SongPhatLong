@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import api from "../_utils/globalApi";
+import api from "@/app/_utils/globalApi";
 import { Loader } from "@/components/loader";
+
 type NewsItem = {
   id: number;
   documentId: string;
+  SlugURL?: string | null;
   Title: string;
   Date: string;
   Author: string;
@@ -17,89 +19,64 @@ type NewsItem = {
   };
 };
 
+type ApiResponse<T> = { data: { data: T[] } };
+
+// helper slugify giống bên products
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 export default function NewsPage() {
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchNews = async () => {
+    (async () => {
       try {
-        const response = await api.getNews();
-        setNews(response.data.data);
+        const resp = (await api.getNews()) as ApiResponse<NewsItem>;
+        setItems(resp.data.data);
       } catch (e) {
-        setError(
-          e instanceof Error
-            ? e.message
-            : "An error occurred while fetching news"
-        );
+        console.error(e);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
-    };
-
-    fetchNews();
+    })();
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
-        <Loader /> {/* Show loader while loading */}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-12 flex items-center justify-center">
-        <p className="text-gray-700">Error: {error}</p>
-      </div>
-    );
-  }
+  if (loading) return <Loader />;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {news.map((item) => (
-            <Link
-              key={item.documentId}
-              href={`/news/${item.documentId}`}
-              className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="relative">
-                <div className="absolute top-4 left-4 z-10">
-                  <span className="bg-gray-900/70 text-white px-3 py-1 text-sm rounded">
-                    THÔNG TIN PCCC
-                  </span>
-                </div>
-                <div className="relative aspect-[16/9]">
-                  <Image
-                    src={item.Image.url || "/placeholder.svg"}
-                    alt={item.Image.alternativeText || item.Title}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                </div>
-              </div>
-              <div className="p-4">
-                <h2 className="text-lg font-semibold text-gray-900 group-hover:text-red-600 transition-colors mb-2 line-clamp-2">
-                  {item.Title}
-                </h2>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">
-                    {new Date(item.Date).toLocaleDateString()}
-                  </span>
-                  <span className="text-sm font-medium text-red-600 group-hover:text-red-700">
-                    ĐỌC NGAY »
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+    <div className="container mx-auto py-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((n) => {
+        const slug = n.SlugURL?.trim() || slugify(n.Title) || n.documentId;
+        return (
+          <Link
+            key={n.documentId}
+            href={`/news/${slug}`}
+            className="block bg-white rounded-lg shadow hover:shadow-md overflow-hidden"
+          >
+            <div className="relative aspect-video">
+              <Image
+                src={n.Image.url}
+                alt={n.Image.alternativeText || n.Title}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div className="p-4">
+              <h2 className="font-semibold line-clamp-2">{n.Title}</h2>
+              <p className="text-sm text-gray-500 mt-2">
+                {new Date(n.Date).toLocaleDateString("vi-VN")}
+              </p>
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
