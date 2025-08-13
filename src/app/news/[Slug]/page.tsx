@@ -1,12 +1,13 @@
 // app/news/[slug]/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Loader } from "@/components/loader";
 import api from "@/app/_utils/globalApi";
+import type { AxiosResponse } from "axios";
 
 type ContentSection = {
   id: number;
@@ -33,18 +34,16 @@ type NewsDetail = {
       small?: { url: string };
       thumbnail?: { url: string };
     };
-  };
+  } | null;
   ContentSection: ContentSection[];
 };
 
-type ApiResp = {
-  data: NewsDetail[];
-  meta?: unknown;
-};
+type ApiResp<T> = { data: T[]; meta?: unknown };
 
-/** slugify giống products/service */
-function slugify(text: string) {
+function slugify(text?: string) {
+  if (!text) return "";
   return text
+    .toString()
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -52,7 +51,7 @@ function slugify(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-/* ---------- RenderContent (no any) ---------- */
+/* RenderContent: parse bold, images, links; external links open new tab */
 type HtmlPart = { type: "html"; content: string };
 type ImgPart = { type: "img"; alt: string; url: string };
 type LinkPart = { type: "link"; text: string; url: string };
@@ -68,12 +67,10 @@ function RenderContent({ raw }: { raw: string }) {
   return (
     <div className="space-y-6">
       {paras.map((para, idx) => {
-        // đổi bold markdown thành <strong> để render dễ hơn
         const bolded = para.replace(
           BOLD_MD,
-          (_match, txt) => `<strong>${txt}</strong>`
+          (_m, txt) => `<strong>${txt}</strong>`
         );
-
         const combined = new RegExp(
           `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
           "g"
@@ -84,7 +81,6 @@ function RenderContent({ raw }: { raw: string }) {
         let m: RegExpExecArray | null;
         while ((m = combined.exec(bolded))) {
           const match = m[0];
-          // groups: when image matched -> m[1]=alt, m[2]=url; when link matched -> m[3]=text, m[4]=url
           const imgAlt = m[1];
           const imgUrl = m[2];
           const linkText = m[3];
@@ -117,7 +113,6 @@ function RenderContent({ raw }: { raw: string }) {
                 return (
                   <span
                     key={i}
-                    // giữ <strong> đã convert; thay newline thành <br/>
                     dangerouslySetInnerHTML={{
                       __html: p.content.replace(/\n/g, "<br/>"),
                     }}
@@ -145,7 +140,7 @@ function RenderContent({ raw }: { raw: string }) {
                 let href = p.url;
                 let text = p.text;
 
-                // nếu label chỉ là "link" hoặc trùng URL, hiển thị hostname cho đẹp
+                // nếu label chỉ là "link" hoặc trùng URL, hiển thị hostname
                 const lower = text.toLowerCase().trim();
                 try {
                   if (lower === "link" || lower === href) {
@@ -153,7 +148,7 @@ function RenderContent({ raw }: { raw: string }) {
                     text = u.hostname.replace(/^www\./, "");
                   }
                 } catch {
-                  // nếu không phải URL giữ nguyên
+                  // not a url -> keep original
                 }
 
                 // swap nếu người nhập [url](label)
@@ -183,9 +178,7 @@ function RenderContent({ raw }: { raw: string }) {
   );
 }
 
-/* ---------- Page component ---------- */
 export default function NewsDetailPage() {
-  // useParams() không typed sẵn, cast nhẹ thành object có slug
   const params = useParams() as { slug?: string | string[] };
   const rawSlug = params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
@@ -202,22 +195,23 @@ export default function NewsDetailPage() {
       }
 
       try {
-        const resp = await api.getNews();
-        // theo globalApi của bạn, resp.data có shape { data: [ ... ], meta: ... }
-        const payload = resp.data as ApiResp | NewsDetail[]; // có thể trực tiếp trả array hoặc { data: [...] }
-        const all: NewsDetail[] = Array.isArray(payload)
-          ? payload
-          : payload.data || [];
+        const resp = (await api.getNews()) as AxiosResponse<
+          ApiResp<NewsDetail>
+        >;
+        const payload = resp?.data;
+        const all: NewsDetail[] = Array.isArray(resp as unknown as NewsDetail[])
+          ? (resp as unknown as NewsDetail[])
+          : payload?.data ?? [];
 
-        // 1) match custom SlugURL
+        // 1) custom SlugURL
         let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
 
-        // 2) match auto slugify(Title)
+        // 2) auto slugify Title
         if (!found) {
-          found = all.find((n) => slugify(n.Title || "") === slug);
+          found = all.find((n) => slugify(n.Title) === slug);
         }
 
-        // 3) fallback documentId hoặc id
+        // 3) fallback documentId or id
         if (!found) {
           found = all.find(
             (n) => n.documentId === slug || String(n.id) === slug
@@ -292,7 +286,10 @@ export default function NewsDetailPage() {
 
           <div className="mt-16 pt-8 border-t flex justify-between">
             <span className="text-gray-500">
-              Cập nhật: {new Date(item.updatedAt).toLocaleDateString("vi-VN")}
+              Cập nhật:{" "}
+              {item.updatedAt
+                ? new Date(item.updatedAt).toLocaleDateString("vi-VN")
+                : ""}
             </span>
             <Link href="/news" className="text-red-600 hover:underline">
               ← Xem thêm tin tức

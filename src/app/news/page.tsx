@@ -1,7 +1,7 @@
 // app/news/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Loader } from "@/components/loader";
@@ -15,12 +15,11 @@ type NewsItem = {
   Title: string;
   Date: string;
   Author: string;
-  Image: { url: string; alternativeText: string | null };
+  Image: { url: string; alternativeText: string | null } | null;
 };
 
 type ApiResp<T> = { data: T[]; meta?: unknown };
 
-// helper slugify (giống bên detail)
 function slugify(text?: string) {
   if (!text) return "";
   return text
@@ -51,27 +50,33 @@ export default function NewsPage() {
     })();
   }, []);
 
-  if (loading) return <Loader />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((n) => {
-        const computed = (
-          n.SlugURL?.trim() ||
+        const computed =
+          (n.SlugURL?.trim() && n.SlugURL.trim()) ||
           slugify(n.Title) ||
-          n.documentId
-        ).toString();
+          n.documentId ||
+          String(n.id);
         const href = `/news/${encodeURIComponent(computed)}`;
         return (
           <Link
-            key={n.documentId}
+            key={n.documentId || n.id}
             href={href}
             className="block bg-white rounded-lg shadow hover:shadow-md overflow-hidden"
           >
             <div className="relative aspect-video">
               <Image
-                src={n.Image.url}
-                alt={n.Image.alternativeText || n.Title}
+                src={n.Image?.url || "/placeholder.svg"}
+                alt={n.Image?.alternativeText || n.Title}
                 fill
                 className="object-cover"
                 unoptimized
@@ -80,7 +85,7 @@ export default function NewsPage() {
             <div className="p-4">
               <h2 className="font-semibold line-clamp-2">{n.Title}</h2>
               <p className="text-sm text-gray-500 mt-2">
-                {new Date(n.Date).toLocaleDateString("vi-VN")}
+                {n.Date ? new Date(n.Date).toLocaleDateString("vi-VN") : ""}
               </p>
             </div>
           </Link>
