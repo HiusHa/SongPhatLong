@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import api from "@/app/_utils/globalApi";
 import { Loader } from "@/components/loader";
+import type { AxiosResponse } from "axios";
 
 type ContentSection = {
   id: number;
@@ -37,6 +38,8 @@ type NewsDetail = {
   ContentSection: ContentSection[];
 };
 
+type ApiResp<T> = { data: T[]; meta?: unknown };
+
 function slugify(text?: string) {
   if (!text) return "";
   return text
@@ -48,7 +51,124 @@ function slugify(text?: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+/* small parser for markdown-like content (images/links/bold) */
+function RenderContent({ raw }: { raw: string }) {
+  const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
+
+  const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const LINK_MD_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const BOLD_MD = /\*\*([^*]+)\*\*/g;
+
+  return (
+    <div className="space-y-6">
+      {paras.map((para, idx) => {
+        const bolded = para.replace(
+          BOLD_MD,
+          (_m, txt) => `<strong>${txt}</strong>`
+        );
+        const combined = new RegExp(
+          `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
+          "g"
+        );
+
+        type Part =
+          | { type: "html"; content: string }
+          | { type: "img"; alt: string; url: string }
+          | { type: "link"; text: string; url: string };
+        const parts: Part[] = [];
+
+        let lastIndex = 0;
+        let m: RegExpExecArray | null;
+        while ((m = combined.exec(bolded))) {
+          const match = m[0];
+          const imgAlt = m[1];
+          const imgUrl = m[2];
+          const linkText = m[3];
+          const linkUrl = m[4];
+
+          if (m.index > lastIndex) {
+            parts.push({
+              type: "html",
+              content: bolded.slice(lastIndex, m.index),
+            });
+          }
+
+          if (imgUrl && imgAlt !== undefined) {
+            parts.push({ type: "img", alt: imgAlt, url: imgUrl });
+          } else if (linkText && linkUrl) {
+            parts.push({ type: "link", text: linkText, url: linkUrl });
+          }
+
+          lastIndex = m.index + match.length;
+        }
+
+        if (lastIndex < bolded.length) {
+          parts.push({ type: "html", content: bolded.slice(lastIndex) });
+        }
+
+        return (
+          <div key={idx} className="text-gray-700 leading-relaxed">
+            {parts.map((p, i) => {
+              if (p.type === "html") {
+                return (
+                  <span
+                    key={i}
+                    dangerouslySetInnerHTML={{
+                      __html: p.content.replace(/\n/g, "<br/>"),
+                    }}
+                  />
+                );
+              }
+              if (p.type === "img") {
+                return (
+                  <div key={i} className="my-4">
+                    <Image
+                      src={p.url}
+                      alt={p.alt || ""}
+                      width={800}
+                      height={600}
+                      className="w-full rounded-lg object-contain"
+                      unoptimized
+                    />
+                  </div>
+                );
+              }
+              if (p.type === "link") {
+                let href = p.url;
+                let text = p.text;
+                const lower = text.toLowerCase().trim();
+                try {
+                  if (lower === "link" || lower === href) {
+                    const u = new URL(href);
+                    text = u.hostname.replace(/^www\./, "");
+                  }
+                } catch {}
+                if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
+                  [href, text] = [text, href];
+                }
+                return (
+                  <a
+                    key={i}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-600 hover:underline break-all"
+                  >
+                    {text}
+                  </a>
+                );
+              }
+              return null;
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function NewsDetailPage() {
+  // typed useParams
   const params = useParams() as { slug?: string | string[] };
   const rawSlug = params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
@@ -63,34 +183,41 @@ export default function NewsDetailPage() {
         setLoading(false);
         return;
       }
+
+      // debug
+      console.log("[NewsDetail] slug:", slug);
+
       try {
-        const resp = await api.getNews(); // typed
-        const all = resp.data?.data ?? [];
+        const resp = (await api.getNews()) as AxiosResponse<
+          ApiResp<NewsDetail>
+        >;
+        const all = resp?.data?.data ?? [];
 
         // 1) match custom SlugURL
-        let found: NewsDetail | undefined = all.find(
-          (n: NewsDetail) => n.SlugURL && n.SlugURL.trim() === slug
-        );
+        let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
 
-        // 2) match slugify(Title)
+        // 2) match auto slugify(Title)
         if (!found) {
-          found = all.find((n: NewsDetail) => slugify(n.Title) === slug);
+          found = all.find((n) => slugify(n.Title) === slug);
         }
 
         // 3) fallback documentId or id
         if (!found) {
           found = all.find(
-            (n: NewsDetail) => n.documentId === slug || String(n.id) === slug
+            (n) => n.documentId === slug || String(n.id) === slug
           );
         }
 
+        console.log("[NewsDetail] found:", !!found, found?.documentId);
+
         if (!found) {
+          // redirect to list
           router.replace("/news");
         } else {
           setItem(found);
         }
       } catch (err) {
-        console.error("Fetch news error:", err);
+        console.error("[NewsDetail] fetch error:", err);
         router.replace("/news");
       } finally {
         setLoading(false);
@@ -98,19 +225,26 @@ export default function NewsDetailPage() {
     })();
   }, [slug, router]);
 
-  if (loading)
+  // Nếu bạn thấy production không gọi api khi điều hướng client-side:
+  // - mở Console xem log "[NewsDetail] slug:" và "[NewsDetail] found:" để kiểm tra
+  // - hoặc thêm `prefetch={false}` vào Link ở list page để buộc navigation tải trang mới
+  // - hoặc (dưới) đặt key={slug} để ép remount component khi slug thay đổi
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
       </div>
     );
+  }
 
   if (!item) return null;
 
   const imgUrl = item.Image?.formats?.large?.url || item.Image?.url;
 
   return (
-    <div className="container mx-auto py-12">
+    // đặt key để chắc chắn component remount khi slug thay đổi trong một số trường hợp App Router không remount
+    <div key={slug} className="container mx-auto py-12">
       <Link href="/news" className="text-red-600 hover:underline mb-6 block">
         ← Quay lại tin tức
       </Link>
@@ -144,10 +278,7 @@ export default function NewsDetailPage() {
                 {idx + 1}. {sec.SectionTitle}
               </h2>
               <div className="bg-gray-100 p-6 rounded-lg">
-                {/* Bạn có thể reuse RenderContent đã viết trước đó (typed) */}
-                <div className="text-gray-700 whitespace-pre-line">
-                  {sec.SectionContent}
-                </div>
+                <RenderContent raw={sec.SectionContent} />
               </div>
             </section>
           ))}

@@ -1,3 +1,4 @@
+// app/news/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,12 +15,11 @@ type NewsItem = {
   Title: string;
   Date: string;
   Author: string;
-  Image: { url: string; alternativeText: string | null };
+  Image: { url: string; alternativeText?: string | null };
 };
 
 type ApiResp<T> = { data: T[]; meta?: unknown };
 
-// helper slugify (same as detail)
 function slugify(text?: string) {
   if (!text) return "";
   return text
@@ -41,8 +41,9 @@ export default function NewsPage() {
         const resp = (await api.getNews()) as AxiosResponse<ApiResp<NewsItem>>;
         const list = resp?.data?.data ?? [];
         setItems(list);
+        console.log("[NewsPage] loaded items:", list.length);
       } catch (err) {
-        console.error("Lỗi getNews (list):", err);
+        console.error("[NewsPage] getNews error:", err);
         setItems([]);
       } finally {
         setLoading(false);
@@ -63,6 +64,8 @@ export default function NewsPage() {
             key={n.documentId}
             href={href}
             className="block bg-white rounded-lg shadow hover:shadow-md overflow-hidden"
+            // Đặt prefetch={false} nếu bạn muốn disable prefetch trên production để debug
+            // prefetch={false}
           >
             <div className="relative aspect-video">
               <Image
