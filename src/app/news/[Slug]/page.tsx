@@ -1,3 +1,4 @@
+// app/news/[slug]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -33,13 +34,12 @@ type NewsDetail = {
       small?: { url: string };
       thumbnail?: { url: string };
     };
-  };
+  } | null;
   ContentSection: ContentSection[];
 };
 
 type ApiResp<T> = { data: T[]; meta?: unknown };
 
-// same slugify
 function slugify(text?: string) {
   if (!text) return "";
   return text
@@ -51,10 +51,9 @@ function slugify(text?: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-/* RenderContent: parse **bold**, ![alt](url) images, [text](url) links */
+/* RenderContent same as earlier but typed */
 function RenderContent({ raw }: { raw: string }) {
   const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
-
   const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
   const LINK_MD_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
   const BOLD_MD = /\*\*([^*]+)\*\*/g;
@@ -70,12 +69,13 @@ function RenderContent({ raw }: { raw: string }) {
           `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
           "g"
         );
+
         type Part =
           | { type: "html"; content: string }
           | { type: "img"; alt: string; url: string }
           | { type: "link"; text: string; url: string };
-        const parts: Part[] = [];
 
+        const parts: Part[] = [];
         let lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = combined.exec(bolded))) {
@@ -100,6 +100,7 @@ function RenderContent({ raw }: { raw: string }) {
 
           lastIndex = m.index + match.length;
         }
+
         if (lastIndex < bolded.length) {
           parts.push({ type: "html", content: bolded.slice(lastIndex) });
         }
@@ -131,27 +132,19 @@ function RenderContent({ raw }: { raw: string }) {
                   </div>
                 );
               }
-              // link
               if (p.type === "link") {
                 let href = p.url;
                 let text = p.text;
-
-                // nếu label chỉ là "link" hoặc trùng URL => hiển thị hostname cho đẹp
                 const lower = text.toLowerCase().trim();
                 try {
                   if (lower === "link" || lower === href) {
                     const u = new URL(href);
                     text = u.hostname.replace(/^www\./, "");
                   }
-                } catch {
-                  // ignore
-                }
-
-                // swap nếu người nhập [url](label)
+                } catch {}
                 if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
                   [href, text] = [text, href];
                 }
-
                 return (
                   <a
                     key={i}
@@ -164,7 +157,6 @@ function RenderContent({ raw }: { raw: string }) {
                   </a>
                 );
               }
-
               return null;
             })}
           </div>
@@ -189,32 +181,42 @@ export default function NewsDetailPage() {
         setLoading(false);
         return;
       }
+
       try {
         const resp = (await api.getNews()) as AxiosResponse<
           ApiResp<NewsDetail>
         >;
-        const payload = resp?.data?.data ?? [];
-        const all: NewsDetail[] = payload;
+        // Normalize list (same pattern as products)
+        let list: NewsDetail[] = [];
+        if (resp && resp.data && Array.isArray(resp.data.data)) {
+          list = resp.data.data;
+        } else if (resp && Array.isArray(resp.data)) {
+          list = resp.data;
+        } else {
+          console.warn("Unexpected getNews response shape (detail):", resp);
+          list = [];
+        }
 
-        let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
+        let found = list.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
 
         if (!found) {
-          found = all.find((n) => slugify(n.Title) === slug);
+          found = list.find((n) => slugify(n.Title) === slug);
         }
 
         if (!found) {
-          found = all.find(
+          found = list.find(
             (n) => n.documentId === slug || String(n.id) === slug
           );
         }
 
         if (!found) {
+          // not found → redirect to list
           router.replace("/news");
         } else {
           setItem(found);
         }
       } catch (err) {
-        console.error("Fetch news error:", err);
+        console.error("Fetch news error (detail):", err);
         router.replace("/news");
       } finally {
         setLoading(false);
