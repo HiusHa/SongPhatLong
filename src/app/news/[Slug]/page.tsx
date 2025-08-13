@@ -1,28 +1,12 @@
 // app/news/[slug]/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "https://songphatlong-admin.onrender.com";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-
-// revalidate (tùy chỉnh)
-export const revalidate = 60;
-
-// --- Types ---
-type ImageType = {
-  alternativeText: string | null;
-  url: string;
-  width?: number;
-  height?: number;
-  formats?: {
-    large?: { url: string };
-    medium?: { url: string };
-    small?: { url: string };
-    thumbnail?: { url: string };
-  };
-};
+import { Loader } from "@/components/loader";
+import api from "@/app/_utils/globalApi";
 
 type ContentSection = {
   id: number;
@@ -38,13 +22,27 @@ type NewsDetail = {
   Date: string;
   Author: string;
   updatedAt: string;
-  Image: ImageType;
+  Image?: {
+    alternativeText?: string | null;
+    url: string;
+    width?: number;
+    height?: number;
+    formats?: {
+      large?: { url: string };
+      medium?: { url: string };
+      small?: { url: string };
+      thumbnail?: { url: string };
+    };
+  };
   ContentSection: ContentSection[];
 };
 
-type ListResponse = { data: NewsDetail[]; meta?: unknown };
+type ApiResp = {
+  data: NewsDetail[];
+  meta?: unknown;
+};
 
-// --- helpers ---
+/** slugify giống products/service */
 function slugify(text: string) {
   return text
     .toLowerCase()
@@ -54,39 +52,39 @@ function slugify(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-function pickImageUrl(img?: ImageType) {
-  if (!img) return "";
-  return img.formats?.large?.url || img.url;
-}
-
-// Markdown-like parsing helpers
-const IMAGE_MD = /!\[([^\]]*)\]\(([^)]+)\)/g;
-const LINK_MD = /\[([^\]]+)\]\(([^)]+)\)/g;
-const BOLD_MD = /\*\*([^*]+)\*\*/g;
+/* ---------- RenderContent (no any) ---------- */
+type HtmlPart = { type: "html"; content: string };
+type ImgPart = { type: "img"; alt: string; url: string };
+type LinkPart = { type: "link"; text: string; url: string };
+type Part = HtmlPart | ImgPart | LinkPart;
 
 function RenderContent({ raw }: { raw: string }) {
   const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
+
+  const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const LINK_MD_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const BOLD_MD = /\*\*([^*]+)\*\*/g;
+
   return (
     <div className="space-y-6">
       {paras.map((para, idx) => {
+        // đổi bold markdown thành <strong> để render dễ hơn
         const bolded = para.replace(
           BOLD_MD,
-          (_, txt) => `<strong>${txt}</strong>`
+          (_match, txt) => `<strong>${txt}</strong>`
         );
+
         const combined = new RegExp(
-          `${IMAGE_MD.source}|${LINK_MD.source}`,
+          `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
           "g"
         );
-        const parts: Array<
-          | { type: "html"; content: string }
-          | { type: "img"; alt: string; url: string }
-          | { type: "link"; text: string; url: string }
-        > = [];
+        const parts: Part[] = [];
 
         let lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = combined.exec(bolded))) {
           const match = m[0];
+          // groups: when image matched -> m[1]=alt, m[2]=url; when link matched -> m[3]=text, m[4]=url
           const imgAlt = m[1];
           const imgUrl = m[2];
           const linkText = m[3];
@@ -117,18 +115,22 @@ function RenderContent({ raw }: { raw: string }) {
             {parts.map((p, i) => {
               if (p.type === "html") {
                 return (
-                  <div
+                  <span
                     key={i}
-                    dangerouslySetInnerHTML={{ __html: p.content }}
+                    // giữ <strong> đã convert; thay newline thành <br/>
+                    dangerouslySetInnerHTML={{
+                      __html: p.content.replace(/\n/g, "<br/>"),
+                    }}
                   />
                 );
               }
+
               if (p.type === "img") {
                 return (
                   <div key={i} className="my-4">
                     <Image
                       src={p.url}
-                      alt={p.alt}
+                      alt={p.alt || ""}
                       width={800}
                       height={600}
                       className="w-full rounded-lg object-contain"
@@ -137,26 +139,42 @@ function RenderContent({ raw }: { raw: string }) {
                   </div>
                 );
               }
+
               // link
-              let href = p.url;
-              let text = p.text;
-              if (text.toLowerCase().trim() === "link") {
-                text = href;
+              if (p.type === "link") {
+                let href = p.url;
+                let text = p.text;
+
+                // nếu label chỉ là "link" hoặc trùng URL, hiển thị hostname cho đẹp
+                const lower = text.toLowerCase().trim();
+                try {
+                  if (lower === "link" || lower === href) {
+                    const u = new URL(href);
+                    text = u.hostname.replace(/^www\./, "");
+                  }
+                } catch {
+                  // nếu không phải URL giữ nguyên
+                }
+
+                // swap nếu người nhập [url](label)
+                if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
+                  [href, text] = [text, href];
+                }
+
+                return (
+                  <a
+                    key={i}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-600 hover:underline break-all"
+                  >
+                    {text}
+                  </a>
+                );
               }
-              if (!href.match(/^https?:\/\//) && text.match(/^https?:\/\//)) {
-                [href, text] = [text, href];
-              }
-              return (
-                <a
-                  key={i}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-red-600 hover:underline break-all"
-                >
-                  {text}
-                </a>
-              );
+
+              return null;
             })}
           </div>
         );
@@ -165,67 +183,72 @@ function RenderContent({ raw }: { raw: string }) {
   );
 }
 
-// --- Pre-render params for build time ---
-export async function generateStaticParams() {
-  const url = `${API_BASE}/api/news?populate=*`;
-  const res = await fetch(url, {
-    headers: API_KEY ? { Authorization: `Bearer ${API_KEY}` } : undefined,
-    // server-side fetch at build time
-  });
+/* ---------- Page component ---------- */
+export default function NewsDetailPage() {
+  // useParams() không typed sẵn, cast nhẹ thành object có slug
+  const params = useParams() as { slug?: string | string[] };
+  const rawSlug = params.slug;
+  const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
+  const router = useRouter();
 
-  if (!res.ok) {
-    return [];
+  const [item, setItem] = useState<NewsDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      if (!slug) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const resp = await api.getNews();
+        // theo globalApi của bạn, resp.data có shape { data: [ ... ], meta: ... }
+        const payload = resp.data as ApiResp | NewsDetail[]; // có thể trực tiếp trả array hoặc { data: [...] }
+        const all: NewsDetail[] = Array.isArray(payload)
+          ? payload
+          : payload.data || [];
+
+        // 1) match custom SlugURL
+        let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
+
+        // 2) match auto slugify(Title)
+        if (!found) {
+          found = all.find((n) => slugify(n.Title || "") === slug);
+        }
+
+        // 3) fallback documentId hoặc id
+        if (!found) {
+          found = all.find(
+            (n) => n.documentId === slug || String(n.id) === slug
+          );
+        }
+
+        if (!found) {
+          router.replace("/news");
+        } else {
+          setItem(found);
+        }
+      } catch (err) {
+        console.error("Fetch news error:", err);
+        router.replace("/news");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [slug, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader />
+      </div>
+    );
   }
 
-  const json = (await res.json()) as ListResponse;
-  const items = Array.isArray(json?.data) ? json.data : [];
-  return items.map((n) => {
-    const s =
-      (n.SlugURL && n.SlugURL.trim()) ||
-      slugify(n.Title || "") ||
-      n.documentId ||
-      String(n.id);
-    return { slug: s };
-  });
-}
+  if (!item) return null;
 
-// --- Page (server component) ---
-export default async function NewsDetailPage({
-  params,
-}: {
-  params: { slug: string } | Promise<{ slug: string }>;
-}) {
-  // IMPORTANT: await params before reading slug (fixes the runtime error)
-  const { slug } = (await params) as { slug: string };
-
-  if (!slug) {
-    redirect("/news");
-  }
-
-  const url = `${API_BASE}/api/news?populate=*`;
-  const res = await fetch(url, {
-    headers: API_KEY ? { Authorization: `Bearer ${API_KEY}` } : undefined,
-  });
-
-  if (!res.ok) {
-    // API lỗi -> chuyển về list (bạn có thể đổi thành notFound())
-    redirect("/news");
-  }
-
-  const json = (await res.json()) as ListResponse;
-  const list = Array.isArray(json?.data) ? json.data : [];
-
-  const found =
-    list.find((n) => n.SlugURL && n.SlugURL.trim() === slug) ||
-    list.find((n) => slugify(n.Title || "") === slug) ||
-    list.find((n) => n.documentId === slug) ||
-    list.find((n) => String(n.id) === slug);
-
-  if (!found) {
-    redirect("/news");
-  }
-
-  const item = found as NewsDetail;
+  const imgUrl = item.Image?.formats?.large?.url || item.Image?.url;
 
   return (
     <div className="container mx-auto py-12">
@@ -242,16 +265,18 @@ export default async function NewsDetailPage({
           </div>
         </div>
 
-        <div className="my-8 mx-8 rounded-lg overflow-hidden">
-          <Image
-            src={pickImageUrl(item.Image)}
-            alt={item.Image.alternativeText || item.Title}
-            width={item.Image.width || 1200}
-            height={item.Image.height || 600}
-            className="object-cover w-full"
-            unoptimized
-          />
-        </div>
+        {imgUrl && (
+          <div className="my-8 mx-8 rounded-lg overflow-hidden">
+            <Image
+              src={imgUrl}
+              alt={item.Image?.alternativeText || item.Title}
+              width={item.Image?.width || 1200}
+              height={item.Image?.height || 600}
+              className="object-cover w-full"
+              unoptimized
+            />
+          </div>
+        )}
 
         <div className="p-8 space-y-16">
           {item.ContentSection.map((sec, idx) => (
