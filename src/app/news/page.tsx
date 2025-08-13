@@ -1,10 +1,12 @@
+// app/news/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import api from "@/app/_utils/globalApi";
 import { Loader } from "@/components/loader";
+import api from "@/app/_utils/globalApi";
+import type { AxiosResponse } from "axios";
 
 type NewsItem = {
   id: number;
@@ -13,42 +15,21 @@ type NewsItem = {
   Title: string;
   Date: string;
   Author: string;
-  Image: {
-    url: string;
-    alternativeText: string | null;
-  };
+  Image: { url: string; alternativeText: string | null };
 };
 
-type ApiWrapped<T> = { data: T[]; meta?: unknown };
+type ApiResp<T> = { data: T[]; meta?: unknown };
 
-// helper slugify giống bên products
-function slugify(text: string) {
+// helper slugify (giống bên detail)
+function slugify(text?: string) {
+  if (!text) return "";
   return text
+    .toString()
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-}
-
-/**
- * Safely extract list of items from API response.
- * Accept shapes:
- *  - [{...}, {...}]
- *  - { data: [{...}, {...}], meta: ... }
- */
-function extractList<T>(raw: unknown): T[] {
-  if (Array.isArray(raw)) {
-    return raw as T[];
-  }
-  if (
-    typeof raw === "object" &&
-    raw !== null &&
-    Array.isArray((raw as ApiWrapped<T>).data)
-  ) {
-    return (raw as ApiWrapped<T>).data;
-  }
-  return [];
 }
 
 export default function NewsPage() {
@@ -58,12 +39,12 @@ export default function NewsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const resp = await api.getNews();
-        const raw = resp.data as unknown;
-        const list = extractList<NewsItem>(raw);
+        const resp = (await api.getNews()) as AxiosResponse<ApiResp<NewsItem>>;
+        const list = resp?.data?.data ?? [];
         setItems(list);
-      } catch (e) {
-        console.error("Fetch news error:", e);
+      } catch (err) {
+        console.error("Lỗi getNews (list):", err);
+        setItems([]);
       } finally {
         setLoading(false);
       }
@@ -75,16 +56,21 @@ export default function NewsPage() {
   return (
     <div className="container mx-auto py-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((n) => {
-        const slug = n.SlugURL?.trim() || slugify(n.Title) || n.documentId;
+        const computed = (
+          n.SlugURL?.trim() ||
+          slugify(n.Title) ||
+          n.documentId
+        ).toString();
+        const href = `/news/${encodeURIComponent(computed)}`;
         return (
           <Link
             key={n.documentId}
-            href={`/news/${slug}`}
+            href={href}
             className="block bg-white rounded-lg shadow hover:shadow-md overflow-hidden"
           >
             <div className="relative aspect-video">
               <Image
-                src={n.Image.url || "/placeholder.svg"}
+                src={n.Image.url}
                 alt={n.Image.alternativeText || n.Title}
                 fill
                 className="object-cover"
