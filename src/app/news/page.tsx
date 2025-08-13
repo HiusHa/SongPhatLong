@@ -1,4 +1,3 @@
-// app/news/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -20,6 +19,7 @@ type NewsItem = {
 
 type ApiResp<T> = { data: T[]; meta?: unknown };
 
+// helper slugify (same as detail)
 function slugify(text?: string) {
   if (!text) return "";
   return text
@@ -38,13 +38,11 @@ export default function NewsPage() {
   useEffect(() => {
     (async () => {
       try {
-        console.log("[NewsPage] calling api.getNews()");
         const resp = (await api.getNews()) as AxiosResponse<ApiResp<NewsItem>>;
-        console.log("[NewsPage] resp.data:", resp?.data);
         const list = resp?.data?.data ?? [];
         setItems(list);
       } catch (err) {
-        console.error("[NewsPage] getNews error:", err);
+        console.error("Lỗi getNews (list):", err);
         setItems([]);
       } finally {
         setLoading(false);
@@ -57,18 +55,13 @@ export default function NewsPage() {
   return (
     <div className="container mx-auto py-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((n) => {
-        const computed = (
-          n.SlugURL?.trim() ||
-          slugify(n.Title) ||
-          n.documentId
-        ).toString();
-        // encode để tránh kí tự lạ làm trục trặc
+        const computed =
+          (n.SlugURL && n.SlugURL.trim()) || slugify(n.Title) || n.documentId;
         const href = `/news/${encodeURIComponent(computed)}`;
         return (
           <Link
             key={n.documentId}
             href={href}
-            prefetch={false}
             className="block bg-white rounded-lg shadow hover:shadow-md overflow-hidden"
           >
             <div className="relative aspect-video">

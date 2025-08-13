@@ -1,4 +1,3 @@
-// app/news/[slug]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,8 +6,40 @@ import Image from "next/image";
 import Link from "next/link";
 import api from "@/app/_utils/globalApi";
 import { Loader } from "@/components/loader";
-import type { NewsDetail } from "@/app/types/news";
+import type { AxiosResponse } from "axios";
 
+type ContentSection = {
+  id: number;
+  SectionTitle: string;
+  SectionContent: string;
+};
+
+type NewsDetail = {
+  id: number;
+  documentId: string;
+  SlugURL?: string | null;
+  Title: string;
+  Date: string;
+  Author: string;
+  updatedAt: string;
+  Image?: {
+    alternativeText?: string | null;
+    url: string;
+    width?: number;
+    height?: number;
+    formats?: {
+      large?: { url: string };
+      medium?: { url: string };
+      small?: { url: string };
+      thumbnail?: { url: string };
+    };
+  };
+  ContentSection: ContentSection[];
+};
+
+type ApiResp<T> = { data: T[]; meta?: unknown };
+
+// same slugify
 function slugify(text?: string) {
   if (!text) return "";
   return text
@@ -20,72 +51,185 @@ function slugify(text?: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+/* RenderContent: parse **bold**, ![alt](url) images, [text](url) links */
+function RenderContent({ raw }: { raw: string }) {
+  const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
+
+  const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const LINK_MD_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const BOLD_MD = /\*\*([^*]+)\*\*/g;
+
+  return (
+    <div className="space-y-6">
+      {paras.map((para, idx) => {
+        const bolded = para.replace(
+          BOLD_MD,
+          (_m, txt) => `<strong>${txt}</strong>`
+        );
+        const combined = new RegExp(
+          `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
+          "g"
+        );
+        type Part =
+          | { type: "html"; content: string }
+          | { type: "img"; alt: string; url: string }
+          | { type: "link"; text: string; url: string };
+        const parts: Part[] = [];
+
+        let lastIndex = 0;
+        let m: RegExpExecArray | null;
+        while ((m = combined.exec(bolded))) {
+          const match = m[0];
+          const imgAlt = m[1];
+          const imgUrl = m[2];
+          const linkText = m[3];
+          const linkUrl = m[4];
+
+          if (m.index > lastIndex) {
+            parts.push({
+              type: "html",
+              content: bolded.slice(lastIndex, m.index),
+            });
+          }
+
+          if (imgUrl && imgAlt !== undefined) {
+            parts.push({ type: "img", alt: imgAlt, url: imgUrl });
+          } else if (linkText && linkUrl) {
+            parts.push({ type: "link", text: linkText, url: linkUrl });
+          }
+
+          lastIndex = m.index + match.length;
+        }
+        if (lastIndex < bolded.length) {
+          parts.push({ type: "html", content: bolded.slice(lastIndex) });
+        }
+
+        return (
+          <div key={idx} className="text-gray-700 leading-relaxed">
+            {parts.map((p, i) => {
+              if (p.type === "html") {
+                return (
+                  <span
+                    key={i}
+                    dangerouslySetInnerHTML={{
+                      __html: p.content.replace(/\n/g, "<br/>"),
+                    }}
+                  />
+                );
+              }
+              if (p.type === "img") {
+                return (
+                  <div key={i} className="my-4">
+                    <Image
+                      src={p.url}
+                      alt={p.alt || ""}
+                      width={800}
+                      height={600}
+                      className="w-full rounded-lg object-contain"
+                      unoptimized
+                    />
+                  </div>
+                );
+              }
+              // link
+              if (p.type === "link") {
+                let href = p.url;
+                let text = p.text;
+
+                // nếu label chỉ là "link" hoặc trùng URL => hiển thị hostname cho đẹp
+                const lower = text.toLowerCase().trim();
+                try {
+                  if (lower === "link" || lower === href) {
+                    const u = new URL(href);
+                    text = u.hostname.replace(/^www\./, "");
+                  }
+                } catch {
+                  // ignore
+                }
+
+                // swap nếu người nhập [url](label)
+                if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
+                  [href, text] = [text, href];
+                }
+
+                return (
+                  <a
+                    key={i}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-600 hover:underline break-all"
+                  >
+                    {text}
+                  </a>
+                );
+              }
+
+              return null;
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function NewsDetailPage() {
   const params = useParams() as { slug?: string | string[] };
   const rawSlug = params.slug;
-  const slug = decodeURIComponent(
-    Array.isArray(rawSlug) ? rawSlug[0] : rawSlug || ""
-  );
+  const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
   const router = useRouter();
 
   const [item, setItem] = useState<NewsDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
     (async () => {
-      console.log("[NewsDetail] useEffect run, slug:", slug);
       if (!slug) {
         setLoading(false);
         return;
       }
-
       try {
-        console.log("[NewsDetail] calling api.getNews()");
-        const resp = await api.getNews();
-        console.log("[NewsDetail] api.getNews response:", resp?.data);
-        const payload = resp?.data;
-        const all = Array.isArray(payload) ? payload : payload?.data ?? [];
+        const resp = (await api.getNews()) as AxiosResponse<
+          ApiResp<NewsDetail>
+        >;
+        const payload = resp?.data?.data ?? [];
+        const all: NewsDetail[] = payload;
 
-        let found = all.find(
-          (n: NewsDetail) => n.SlugURL && n.SlugURL.trim() === slug
-        );
-        if (!found)
-          found = all.find((n: NewsDetail) => slugify(n.Title) === slug);
-        if (!found)
+        let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
+
+        if (!found) {
+          found = all.find((n) => slugify(n.Title) === slug);
+        }
+
+        if (!found) {
           found = all.find(
-            (n: NewsDetail) => n.documentId === slug || String(n.id) === slug
+            (n) => n.documentId === slug || String(n.id) === slug
           );
+        }
 
-        console.log(
-          "[NewsDetail] found:",
-          !!found,
-          found?.documentId ?? found?.id
-        );
         if (!found) {
           router.replace("/news");
-        } else if (mounted) {
-          setItem(found as NewsDetail);
+        } else {
+          setItem(found);
         }
       } catch (err) {
-        console.error("[NewsDetail] fetch error:", err);
+        console.error("Fetch news error:", err);
         router.replace("/news");
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     })();
-
-    return () => {
-      mounted = false;
-    };
   }, [slug, router]);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
       </div>
     );
+  }
+
   if (!item) return null;
 
   const imgUrl = item.Image?.formats?.large?.url || item.Image?.url;
@@ -119,13 +263,13 @@ export default function NewsDetailPage() {
         )}
 
         <div className="p-8 space-y-16">
-          {item.ContentSection?.map((sec, idx) => (
+          {item.ContentSection.map((sec, idx) => (
             <section key={sec.id} id={`sec-${sec.id}`}>
               <h2 className="text-2xl font-bold mb-4">
                 {idx + 1}. {sec.SectionTitle}
               </h2>
-              <div className="bg-gray-100 p-6 rounded-lg whitespace-pre-line">
-                {sec.SectionContent}
+              <div className="bg-gray-100 p-6 rounded-lg">
+                <RenderContent raw={sec.SectionContent} />
               </div>
             </section>
           ))}
