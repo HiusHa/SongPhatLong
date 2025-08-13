@@ -1,7 +1,6 @@
-// app/news/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Loader } from "@/components/loader";
@@ -41,9 +40,8 @@ export default function NewsPage() {
         const resp = (await api.getNews()) as AxiosResponse<ApiResp<NewsItem>>;
         const list = resp?.data?.data ?? [];
         setItems(list);
-        console.log("[NewsPage] loaded items:", list.length);
       } catch (err) {
-        console.error("[NewsPage] getNews error:", err);
+        console.error("Lỗi khi gọi getNews (list):", err);
         setItems([]);
       } finally {
         setLoading(false);
@@ -60,12 +58,12 @@ export default function NewsPage() {
           (n.SlugURL && n.SlugURL.trim()) || slugify(n.Title) || n.documentId;
         const href = `/news/${encodeURIComponent(computed)}`;
         return (
+          // IMPORTANT: prefetch={false} để tránh RSC prefetch khiến client không remount
           <Link
             key={n.documentId}
             href={href}
+            prefetch={false}
             className="block bg-white rounded-lg shadow hover:shadow-md overflow-hidden"
-            // Đặt prefetch={false} nếu bạn muốn disable prefetch trên production để debug
-            // prefetch={false}
           >
             <div className="relative aspect-video">
               <Image
