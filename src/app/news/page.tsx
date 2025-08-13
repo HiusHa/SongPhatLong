@@ -15,7 +15,7 @@ type NewsItem = {
   Title: string;
   Date: string;
   Author: string;
-  Image: { url: string; alternativeText?: string | null };
+  Image: { url: string; alternativeText: string | null };
 };
 
 type ApiResp<T> = { data: T[]; meta?: unknown };
@@ -38,11 +38,13 @@ export default function NewsPage() {
   useEffect(() => {
     (async () => {
       try {
+        console.log("[NewsPage] calling api.getNews()");
         const resp = (await api.getNews()) as AxiosResponse<ApiResp<NewsItem>>;
+        console.log("[NewsPage] resp.data:", resp?.data);
         const list = resp?.data?.data ?? [];
         setItems(list);
       } catch (err) {
-        console.error("Lỗi getNews (list):", err);
+        console.error("[NewsPage] getNews error:", err);
         setItems([]);
       } finally {
         setLoading(false);
@@ -60,12 +62,14 @@ export default function NewsPage() {
           slugify(n.Title) ||
           n.documentId
         ).toString();
+        // encode để tránh kí tự lạ làm trục trặc
         const href = `/news/${encodeURIComponent(computed)}`;
         return (
           <Link
             key={n.documentId}
             href={href}
-            className="block bg-white rounded-lg shadow overflow-hidden"
+            prefetch={false}
+            className="block bg-white rounded-lg shadow hover:shadow-md overflow-hidden"
           >
             <div className="relative aspect-video">
               <Image

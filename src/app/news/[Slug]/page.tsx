@@ -7,36 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import api from "@/app/_utils/globalApi";
 import { Loader } from "@/components/loader";
-import type { AxiosResponse } from "axios";
-
-type ContentSection = {
-  id: number;
-  SectionTitle: string;
-  SectionContent: string;
-};
-type NewsDetail = {
-  id: number;
-  documentId: string;
-  SlugURL?: string | null;
-  Title: string;
-  Date: string;
-  Author: string;
-  updatedAt: string;
-  Image?: {
-    alternativeText?: string | null;
-    url: string;
-    width?: number;
-    height?: number;
-    formats?: {
-      large?: { url: string; width?: number; height?: number };
-      medium?: { url: string; width?: number; height?: number };
-      small?: { url: string; width?: number; height?: number };
-      thumbnail?: { url: string; width?: number; height?: number };
-    };
-  };
-  ContentSection: ContentSection[];
-};
-type ApiResp = { data: NewsDetail[]; meta?: unknown };
+import type { NewsDetail } from "@/app/types/news";
 
 function slugify(text?: string) {
   if (!text) return "";
@@ -61,31 +32,52 @@ export default function NewsDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
+      console.log("[NewsDetail] useEffect run, slug:", slug);
       if (!slug) {
         setLoading(false);
         return;
       }
-      try {
-        const resp = (await api.getNews()) as AxiosResponse<ApiResp>;
-        const all: NewsDetail[] = resp?.data?.data ?? [];
 
-        let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
-        if (!found) found = all.find((n) => slugify(n.Title) === slug);
+      try {
+        console.log("[NewsDetail] calling api.getNews()");
+        const resp = await api.getNews();
+        console.log("[NewsDetail] api.getNews response:", resp?.data);
+        const payload = resp?.data;
+        const all = Array.isArray(payload) ? payload : payload?.data ?? [];
+
+        let found = all.find(
+          (n: NewsDetail) => n.SlugURL && n.SlugURL.trim() === slug
+        );
+        if (!found)
+          found = all.find((n: NewsDetail) => slugify(n.Title) === slug);
         if (!found)
           found = all.find(
-            (n) => n.documentId === slug || String(n.id) === slug
+            (n: NewsDetail) => n.documentId === slug || String(n.id) === slug
           );
 
-        if (!found) router.replace("/news");
-        else setItem(found);
+        console.log(
+          "[NewsDetail] found:",
+          !!found,
+          found?.documentId ?? found?.id
+        );
+        if (!found) {
+          router.replace("/news");
+        } else if (mounted) {
+          setItem(found as NewsDetail);
+        }
       } catch (err) {
-        console.error("Fetch news error:", err);
+        console.error("[NewsDetail] fetch error:", err);
         router.replace("/news");
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
+
+    return () => {
+      mounted = false;
+    };
   }, [slug, router]);
 
   if (loading)
@@ -103,6 +95,7 @@ export default function NewsDetailPage() {
       <Link href="/news" className="text-red-600 hover:underline mb-6 block">
         ← Quay lại tin tức
       </Link>
+
       <article className="bg-white rounded-xl shadow overflow-hidden">
         <div className="bg-red-600 text-white px-8 py-12">
           <h1 className="text-4xl font-bold mb-4">{item.Title}</h1>
@@ -126,14 +119,13 @@ export default function NewsDetailPage() {
         )}
 
         <div className="p-8 space-y-16">
-          {item.ContentSection.map((sec, idx) => (
+          {item.ContentSection?.map((sec, idx) => (
             <section key={sec.id} id={`sec-${sec.id}`}>
               <h2 className="text-2xl font-bold mb-4">
                 {idx + 1}. {sec.SectionTitle}
               </h2>
-              <div className="bg-gray-100 p-6 rounded-lg">
-                {/* render content as you had */}
-                <div>{sec.SectionContent}</div>
+              <div className="bg-gray-100 p-6 rounded-lg whitespace-pre-line">
+                {sec.SectionContent}
               </div>
             </section>
           ))}
