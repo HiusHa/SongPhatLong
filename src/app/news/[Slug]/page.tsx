@@ -7,7 +7,6 @@ import Image from "next/image";
 import Link from "next/link";
 import api from "@/app/_utils/globalApi";
 import { Loader } from "@/components/loader";
-import type { AxiosResponse } from "axios";
 
 type ContentSection = {
   id: number;
@@ -34,11 +33,9 @@ type NewsDetail = {
       small?: { url: string };
       thumbnail?: { url: string };
     };
-  } | null;
+  };
   ContentSection: ContentSection[];
 };
-
-type ApiResp<T> = { data: T[]; meta?: unknown };
 
 function slugify(text?: string) {
   if (!text) return "";
@@ -49,121 +46,6 @@ function slugify(text?: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-}
-
-/* RenderContent same as earlier but typed */
-function RenderContent({ raw }: { raw: string }) {
-  const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
-  const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
-  const LINK_MD_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
-  const BOLD_MD = /\*\*([^*]+)\*\*/g;
-
-  return (
-    <div className="space-y-6">
-      {paras.map((para, idx) => {
-        const bolded = para.replace(
-          BOLD_MD,
-          (_m, txt) => `<strong>${txt}</strong>`
-        );
-        const combined = new RegExp(
-          `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
-          "g"
-        );
-
-        type Part =
-          | { type: "html"; content: string }
-          | { type: "img"; alt: string; url: string }
-          | { type: "link"; text: string; url: string };
-
-        const parts: Part[] = [];
-        let lastIndex = 0;
-        let m: RegExpExecArray | null;
-        while ((m = combined.exec(bolded))) {
-          const match = m[0];
-          const imgAlt = m[1];
-          const imgUrl = m[2];
-          const linkText = m[3];
-          const linkUrl = m[4];
-
-          if (m.index > lastIndex) {
-            parts.push({
-              type: "html",
-              content: bolded.slice(lastIndex, m.index),
-            });
-          }
-
-          if (imgUrl && imgAlt !== undefined) {
-            parts.push({ type: "img", alt: imgAlt, url: imgUrl });
-          } else if (linkText && linkUrl) {
-            parts.push({ type: "link", text: linkText, url: linkUrl });
-          }
-
-          lastIndex = m.index + match.length;
-        }
-
-        if (lastIndex < bolded.length) {
-          parts.push({ type: "html", content: bolded.slice(lastIndex) });
-        }
-
-        return (
-          <div key={idx} className="text-gray-700 leading-relaxed">
-            {parts.map((p, i) => {
-              if (p.type === "html") {
-                return (
-                  <span
-                    key={i}
-                    dangerouslySetInnerHTML={{
-                      __html: p.content.replace(/\n/g, "<br/>"),
-                    }}
-                  />
-                );
-              }
-              if (p.type === "img") {
-                return (
-                  <div key={i} className="my-4">
-                    <Image
-                      src={p.url}
-                      alt={p.alt || ""}
-                      width={800}
-                      height={600}
-                      className="w-full rounded-lg object-contain"
-                      unoptimized
-                    />
-                  </div>
-                );
-              }
-              if (p.type === "link") {
-                let href = p.url;
-                let text = p.text;
-                const lower = text.toLowerCase().trim();
-                try {
-                  if (lower === "link" || lower === href) {
-                    const u = new URL(href);
-                    text = u.hostname.replace(/^www\./, "");
-                  }
-                } catch {}
-                if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
-                  [href, text] = [text, href];
-                }
-                return (
-                  <a
-                    key={i}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-red-600 hover:underline break-all"
-                  >
-                    {text}
-                  </a>
-                );
-              }
-              return null;
-            })}
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 export default function NewsDetailPage() {
@@ -181,42 +63,34 @@ export default function NewsDetailPage() {
         setLoading(false);
         return;
       }
-
       try {
-        const resp = (await api.getNews()) as AxiosResponse<
-          ApiResp<NewsDetail>
-        >;
-        // Normalize list (same pattern as products)
-        let list: NewsDetail[] = [];
-        if (resp && resp.data && Array.isArray(resp.data.data)) {
-          list = resp.data.data;
-        } else if (resp && Array.isArray(resp.data)) {
-          list = resp.data;
-        } else {
-          console.warn("Unexpected getNews response shape (detail):", resp);
-          list = [];
+        const resp = await api.getNews(); // typed
+        const all = resp.data?.data ?? [];
+
+        // 1) match custom SlugURL
+        let found: NewsDetail | undefined = all.find(
+          (n: NewsDetail) => n.SlugURL && n.SlugURL.trim() === slug
+        );
+
+        // 2) match slugify(Title)
+        if (!found) {
+          found = all.find((n: NewsDetail) => slugify(n.Title) === slug);
         }
 
-        let found = list.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
-
+        // 3) fallback documentId or id
         if (!found) {
-          found = list.find((n) => slugify(n.Title) === slug);
-        }
-
-        if (!found) {
-          found = list.find(
-            (n) => n.documentId === slug || String(n.id) === slug
+          found = all.find(
+            (n: NewsDetail) => n.documentId === slug || String(n.id) === slug
           );
         }
 
         if (!found) {
-          // not found → redirect to list
           router.replace("/news");
         } else {
           setItem(found);
         }
       } catch (err) {
-        console.error("Fetch news error (detail):", err);
+        console.error("Fetch news error:", err);
         router.replace("/news");
       } finally {
         setLoading(false);
@@ -224,13 +98,12 @@ export default function NewsDetailPage() {
     })();
   }, [slug, router]);
 
-  if (loading) {
+  if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
       </div>
     );
-  }
 
   if (!item) return null;
 
@@ -271,7 +144,10 @@ export default function NewsDetailPage() {
                 {idx + 1}. {sec.SectionTitle}
               </h2>
               <div className="bg-gray-100 p-6 rounded-lg">
-                <RenderContent raw={sec.SectionContent} />
+                {/* Bạn có thể reuse RenderContent đã viết trước đó (typed) */}
+                <div className="text-gray-700 whitespace-pre-line">
+                  {sec.SectionContent}
+                </div>
               </div>
             </section>
           ))}
