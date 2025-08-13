@@ -9,29 +9,42 @@ import Link from "next/link";
 import { Loader } from "@/components/loader";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
-import slugifyLib from "slugify";
-import type { StrapiService } from "../../types/service";
+import type { StrapiService } from "@/app/types/service";
+import api from "@/app/_utils/globalApi";
+import type { AxiosResponse } from "axios";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.6 },
 };
+
 const staggerChildren = {
   animate: { transition: { staggerChildren: 0.1 } },
 };
 
-// Helper: ưu tiên SlugURL, fallback slugify(serviceName)
-function makeSlug(s: StrapiService) {
-  return (
-    s.slugURL?.trim() ||
-    slugifyLib(s.serviceName, { lower: true, strict: true })
-  );
+// helper slugify (no external lib required)
+function slugify(text?: string) {
+  if (!text) return "";
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+// read SlugURL safely (account for "SlugURL" or "slugURL")
+function readSlugField(s: StrapiService): string | null {
+  const r =
+    (s as unknown as Record<string, unknown>)["SlugURL"] ??
+    (s as unknown as Record<string, unknown>)["slugURL"];
+  return typeof r === "string" && r.trim() !== "" ? (r as string).trim() : null;
 }
 
 export default function ServiceDetails() {
-  // lấy param `slug` thay vì `documentId`
-  const { slug } = useParams<{ slug: string }>();
+  const { slug } = useParams();
   const router = useRouter();
   const [service, setService] = useState<StrapiService | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,30 +57,41 @@ export default function ServiceDetails() {
         return;
       }
 
-      // 1) Lấy toàn bộ list
-      const resp = await fetch(
-        "https://songphatlong-admin.onrender.com/api/services?populate=*"
-      );
-      const json = await resp.json();
-      const all: StrapiService[] = json.data;
+      try {
+        const resp = await api.getServices();
+        const typed = resp as AxiosResponse<{ data: StrapiService[] }>;
+        const list: StrapiService[] = Array.isArray(typed.data?.data)
+          ? typed.data.data
+          : [];
 
-      // 2) Sinh ra __slug cho mỗi item
-      const withSlug = all.map((s) => ({
-        ...s,
-        __slug: makeSlug(s),
-      }));
+        // 1) try custom SlugURL
+        let found = list.find((s) => {
+          const raw = readSlugField(s);
+          return raw === slug;
+        });
 
-      // 3) Tìm theo slug mới hoặc fallback documentId
-      const found =
-        withSlug.find((s) => s.__slug === slug) ||
-        withSlug.find((s) => s.documentId === slug);
+        // 2) fallback to generated slug from serviceName
+        if (!found) {
+          found = list.find((s) => slugify(s.serviceName) === slug);
+        }
 
-      if (!found) {
+        // 3) fallback to documentId or id
+        if (!found) {
+          found = list.find((s) => String(s.documentId ?? s.id) === slug);
+        }
+
+        if (!found) {
+          router.replace("/services");
+        } else {
+          setService(found);
+        }
+      } catch (err) {
+        console.error("Fetch services error:", err);
+        // redirect to list on error
         router.replace("/services");
-      } else {
-        setService(found);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     })();
   }, [slug, router]);
 
@@ -78,20 +102,17 @@ export default function ServiceDetails() {
       </div>
     );
   }
-  if (!service) return null; // đã redirect
 
-  // Giữ nguyên logic getImageUrl/getImageAlt
-  const getImageUrl = () => {
-    const img = service.serviceImage?.[0];
-    if (imageError || !img?.url) {
-      return `/placeholder.svg?height=600&width=400&text=${encodeURIComponent(
-        service.serviceName
-      )}`;
-    }
-    return img.url;
-  };
-  const getImageAlt = () =>
-    service.serviceImage?.[0]?.alternativeText || service.serviceName;
+  if (!service) return null; // already redirected or not found
+
+  const img = service.serviceImage?.[0];
+  const imgUrl =
+    !imageError && img?.url
+      ? img.url
+      : `/placeholder.svg?height=600&width=400&text=${encodeURIComponent(
+          service.serviceName ?? "Service Image"
+        )}`;
+  const imgAlt = img?.alternativeText || service.serviceName || "Service Image";
 
   return (
     <motion.div
@@ -128,8 +149,8 @@ export default function ServiceDetails() {
               variants={fadeInUp}
             >
               <Image
-                src={getImageUrl()}
-                alt={getImageAlt()}
+                src={imgUrl}
+                alt={imgAlt}
                 fill
                 className="rounded-lg shadow-lg object-cover"
                 onError={() => setImageError(true)}
@@ -207,6 +228,7 @@ interface ServiceStepProps {
   isActive?: boolean;
   service: StrapiService;
 }
+
 function ServiceStep({
   number,
   title,

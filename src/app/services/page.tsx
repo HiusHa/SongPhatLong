@@ -1,81 +1,99 @@
+// app/services/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Loader } from "@/components/loader";
-import api from "../_utils/globalApi";
-import { StrapiService, StrapiResponse } from "../types/service";
+import api from "@/app/_utils/globalApi";
+import type { StrapiService } from "@/app/types/service";
 import { ServiceCard } from "./service-card";
-import slugify from "slugify";
+import type { AxiosResponse } from "axios";
 
-// Mỗi service giờ ngoài StrapiService còn có thêm __slug (string)
-type ServiceWithSlug = StrapiService & { __slug: string };
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
+function slugify(text?: string) {
+  if (!text) return "";
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 export default function ServicesPage() {
-  const [services, setServices] = useState<ServiceWithSlug[]>([]);
+  const [services, setServices] = useState<
+    (StrapiService & { __slug?: string })[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const response = await api.getServices();
-        const data = (response.data as StrapiResponse).data;
+        const resp = await api.getServices();
+        // resp is AxiosResponse<{ data: StrapiService[] }>
+        const typed = resp as AxiosResponse<{ data: StrapiService[] }>;
+        const list: StrapiService[] = typed.data?.data ?? [];
 
-        // Gán __slug: ưu tiên SlugURL, nếu không có thì tự sinh từ serviceName
-        const withSlug: ServiceWithSlug[] = data.map((svc) => ({
-          ...svc,
-          __slug:
-            svc.slugURL?.trim() || slugify(svc.serviceName, { lower: true }),
-        }));
+        const withSlug = list.map((s) => {
+          // đọc cả "SlugURL" và "slugURL" an toàn (không dùng `any`)
+          const r =
+            (s as unknown as Record<string, unknown>)["SlugURL"] ??
+            (s as unknown as Record<string, unknown>)["slugURL"];
+          const rawSlug = typeof r === "string" ? r.trim() : "";
+          const generated =
+            rawSlug || slugify(s.serviceName) || String(s.documentId ?? s.id);
+          return { ...s, __slug: generated };
+        });
 
         setServices(withSlug);
       } catch (err) {
         console.error("Error fetching services:", err);
+        setServices([]);
       } finally {
         setIsLoading(false);
       }
     })();
   }, []);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <AnimatePresence>
-        {isLoading ? (
-          <motion.div
-            key="loader"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <Loader />
-          </motion.div>
-        ) : (
-          <motion.main
-            key="content"
-            className="flex-grow"
-            initial="initial"
-            animate="animate"
-            exit="exit"
-          >
-            {/* ... header nếu cần ... */}
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader />
+      </div>
+    );
+  }
 
-            <section className="py-16 px-6 bg-gray-50">
-              <div className="container mx-auto">
-                <motion.div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {services.map((service) => (
-                    <ServiceCard
-                      key={service.id}
-                      service={service}
-                      slug={service.__slug}
-                    />
-                  ))}
-                </motion.div>
-              </div>
-            </section>
-          </motion.main>
+  return (
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="min-h-screen bg-white"
+    >
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Dịch vụ</h1>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {services.map((svc) => (
+            <ServiceCard
+              key={svc.id}
+              service={svc}
+              slug={svc.__slug ?? String(svc.documentId ?? svc.id)}
+            />
+          ))}
+        </div>
+
+        {services.length === 0 && (
+          <p className="text-center text-gray-600 mt-8">Không có dịch vụ.</p>
         )}
-      </AnimatePresence>
-    </div>
+      </div>
+    </motion.div>
   );
 }

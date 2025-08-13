@@ -19,7 +19,7 @@ type NewsItem = {
   };
 };
 
-type ApiResponse<T> = { data: { data: T[] } };
+type ApiWrapped<T> = { data: T[]; meta?: unknown };
 
 // helper slugify giống bên products
 function slugify(text: string) {
@@ -31,6 +31,26 @@ function slugify(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+/**
+ * Safely extract list of items from API response.
+ * Accept shapes:
+ *  - [{...}, {...}]
+ *  - { data: [{...}, {...}], meta: ... }
+ */
+function extractList<T>(raw: unknown): T[] {
+  if (Array.isArray(raw)) {
+    return raw as T[];
+  }
+  if (
+    typeof raw === "object" &&
+    raw !== null &&
+    Array.isArray((raw as ApiWrapped<T>).data)
+  ) {
+    return (raw as ApiWrapped<T>).data;
+  }
+  return [];
+}
+
 export default function NewsPage() {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,10 +58,12 @@ export default function NewsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const resp = (await api.getNews()) as ApiResponse<NewsItem>;
-        setItems(resp.data.data);
+        const resp = await api.getNews();
+        const raw = resp.data as unknown;
+        const list = extractList<NewsItem>(raw);
+        setItems(list);
       } catch (e) {
-        console.error(e);
+        console.error("Fetch news error:", e);
       } finally {
         setLoading(false);
       }
@@ -62,10 +84,11 @@ export default function NewsPage() {
           >
             <div className="relative aspect-video">
               <Image
-                src={n.Image.url}
+                src={n.Image.url || "/placeholder.svg"}
                 alt={n.Image.alternativeText || n.Title}
                 fill
                 className="object-cover"
+                unoptimized
               />
             </div>
             <div className="p-4">

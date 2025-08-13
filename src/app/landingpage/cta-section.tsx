@@ -12,7 +12,7 @@ export function CTASection() {
 
   const ctaItems = [
     {
-      title: "Bạn là doanh nghiệp?",
+      title: "Bạn cần tư vấn giải pháp PCCC cho dự án?",
       description:
         "Cùng SONG PHÁT LONG khám phá các giải pháp từ chuyên gia để nâng cao an toàn và hiệu quả PCCC cho doanh nghiệp của bạn.",
       buttonText: "Tư vấn cùng SONG PHÁT LONG",
@@ -20,7 +20,7 @@ export function CTASection() {
       link: "/services",
     },
     {
-      title: "Bạn là khách hàng cá nhân?",
+      title: "Bạn đang tìm mua thiết bị PCCC chính hãng?",
       description:
         "SONG PHÁT LONG cam kết cung cấp các sản phẩm, thiết bị PCCC chính hãng từ những thương hiệu hàng đầu thế giới .",
       buttonText: "Mua hàng cùng SONG PHÁT LONG",
