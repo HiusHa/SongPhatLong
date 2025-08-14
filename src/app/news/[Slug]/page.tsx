@@ -1,47 +1,47 @@
-// app/news/[slug]/page.tsx
+// src/app/news/[slug]/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader } from "@/components/loader";
-import api from "@/app/_utils/globalApi";
 import type { AxiosResponse } from "axios";
+import api from "@/app/_utils/globalApi"; // đảm bảo export getNews() ở đây
+import { Loader } from "@/components/loader";
 
+/* --- Types --- */
 type ContentSection = {
   id: number;
   SectionTitle: string;
   SectionContent: string;
 };
 
-type ImageFormats = {
-  large?: { url: string };
-  medium?: { url: string };
-  small?: { url: string };
-  thumbnail?: { url: string };
-};
-
 type NewsDetail = {
   id: number;
-  documentId: string;
+  documentId?: string;
   SlugURL?: string | null;
   Title: string;
   Date: string;
-  Author: string;
-  updatedAt: string;
+  Author?: string;
+  updatedAt?: string;
   Image?: {
+    id?: number;
     alternativeText?: string | null;
     url: string;
     width?: number;
     height?: number;
-    formats?: ImageFormats;
-  };
-  ContentSection: ContentSection[];
+    formats?: {
+      large?: { url: string };
+      medium?: { url: string };
+      small?: { url: string };
+      thumbnail?: { url: string };
+    };
+  } | null;
+  ContentSection?: ContentSection[] | null;
 };
 
-type ApiResp<T> = { data: T[]; meta?: unknown };
-
+/* --- util helpers --- */
 function slugify(text?: string) {
   if (!text) return "";
   return text
@@ -49,178 +49,95 @@ function slugify(text?: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
 
-/* small markdown-ish renderer used earlier (keeps types) */
-function RenderContent({ raw }: { raw: string }) {
-  const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
-  const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
-  const LINK_MD_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
-  const BOLD_MD = /\*\*([^*]+)\*\*/g;
-
-  return (
-    <div className="space-y-6">
-      {paras.map((para, idx) => {
-        const bolded = para.replace(
-          BOLD_MD,
-          (_m, txt) => `<strong>${txt}</strong>`
-        );
-        const combined = new RegExp(
-          `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
-          "g"
-        );
-        type Part =
-          | { type: "html"; content: string }
-          | { type: "img"; alt: string; url: string }
-          | { type: "link"; text: string; url: string };
-        const parts: Part[] = [];
-
-        let lastIndex = 0;
-        let m: RegExpExecArray | null;
-        while ((m = combined.exec(bolded))) {
-          const match = m[0];
-          const imgAlt = m[1];
-          const imgUrl = m[2];
-          const linkText = m[3];
-          const linkUrl = m[4];
-
-          if (m.index > lastIndex) {
-            parts.push({
-              type: "html",
-              content: bolded.slice(lastIndex, m.index),
-            });
-          }
-
-          if (imgUrl && imgAlt !== undefined) {
-            parts.push({ type: "img", alt: imgAlt, url: imgUrl });
-          } else if (linkText && linkUrl) {
-            parts.push({ type: "link", text: linkText, url: linkUrl });
-          }
-
-          lastIndex = m.index + match.length;
-        }
-
-        if (lastIndex < bolded.length) {
-          parts.push({ type: "html", content: bolded.slice(lastIndex) });
-        }
-
-        return (
-          <div key={idx} className="text-gray-700 leading-relaxed">
-            {parts.map((p, i) => {
-              if (p.type === "html") {
-                return (
-                  <span
-                    key={i}
-                    dangerouslySetInnerHTML={{
-                      __html: p.content.replace(/\n/g, "<br/>"),
-                    }}
-                  />
-                );
-              }
-              if (p.type === "img") {
-                return (
-                  <div key={i} className="my-4">
-                    <Image
-                      src={p.url}
-                      alt={p.alt || ""}
-                      width={800}
-                      height={600}
-                      className="w-full rounded-lg object-contain"
-                      unoptimized
-                    />
-                  </div>
-                );
-              }
-              // link
-              if (p.type === "link") {
-                let href = p.url;
-                let text = p.text;
-                try {
-                  const lower = text.toLowerCase().trim();
-                  if (lower === "link" || lower === href) {
-                    const u = new URL(href);
-                    text = u.hostname.replace(/^www\./, "");
-                  }
-                } catch {}
-                // swap if [url](label) reversed
-                if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
-                  [href, text] = [text, href];
-                }
-                return (
-                  <a
-                    key={i}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-red-600 hover:underline break-all"
-                  >
-                    {text}
-                  </a>
-                );
-              }
-              return null;
-            })}
-          </div>
-        );
-      })}
-    </div>
-  );
+/**
+ * đọc trường SlugURL với hai khả năng SlugURL / slugURL (để tương thích)
+ */
+function readSlugField(n: NewsDetail): string | null {
+  const r =
+    (n as unknown as Record<string, unknown>)["SlugURL"] ??
+    (n as unknown as Record<string, unknown>)["slugURL"];
+  return typeof r === "string" && r.trim() !== "" ? (r as string).trim() : null;
 }
 
-export default function NewsDetailClient() {
+/* --- Component --- */
+export default function NewsDetails() {
   const params = useParams() as { slug?: string | string[] };
   const rawSlug = params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
   const router = useRouter();
 
   const [item, setItem] = useState<NewsDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [imageError, setImageError] = useState<boolean>(false);
 
   useEffect(() => {
+    let mounted = true;
+
     (async () => {
+      setIsLoading(true);
+      setItem(null);
+      setImageError(false);
+
       if (!slug) {
-        setLoading(false);
+        setIsLoading(false);
         return;
       }
+
       try {
-        const resp = (await api.getNews()) as AxiosResponse<
-          ApiResp<NewsDetail>
-        >;
-        const payload = resp?.data?.data ?? [];
-        const all: NewsDetail[] = payload;
+        // call API to get all news (same approach as services)
+        const resp = (await api.getNews()) as AxiosResponse<{
+          data: NewsDetail[];
+        }>;
+        // Strapi style: resp.data.data (safety check)
+        const list: NewsDetail[] = Array.isArray(resp.data?.data)
+          ? resp.data.data
+          : [];
 
-        // 1) match SlugURL exact
-        let found = all.find((n) => !!n.SlugURL && n.SlugURL?.trim() === slug);
+        // 1) try custom SlugURL field (supports SlugURL / slugURL)
+        let found = list.find((n) => {
+          const raw = readSlugField(n);
+          return raw === slug;
+        });
 
-        // 2) match auto slug(Title)
+        // 2) fallback: generated slug from Title
         if (!found) {
-          found = all.find((n) => slugify(n.Title) === slug);
+          found = list.find((n) => slugify(n.Title) === slug);
         }
 
-        // 3) fallbacks: documentId or id
+        // 3) fallback: documentId or id
         if (!found) {
-          found = all.find(
-            (n) => n.documentId === slug || String(n.id) === slug
+          found = list.find(
+            (n) =>
+              String(n.documentId ?? n.id) === slug || String(n.id) === slug
           );
         }
 
         if (!found) {
-          router.replace("/news");
+          // not found -> redirect to list
+          if (mounted) router.replace("/news");
         } else {
-          setItem(found);
+          if (mounted) setItem(found);
         }
       } catch (err) {
+        // log and redirect to list page (same behavior as services)
         console.error("Fetch news error:", err);
-        router.replace("/news");
+        if (mounted) router.replace("/news");
       } finally {
-        setLoading(false);
+        if (mounted) setIsLoading(false);
       }
     })();
+
+    return () => {
+      mounted = false;
+    };
   }, [slug, router]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
@@ -228,9 +145,18 @@ export default function NewsDetailClient() {
     );
   }
 
-  if (!item) return null;
+  if (!item) return null; // already redirected
 
-  const imgUrl = item.Image?.formats?.large?.url ?? item.Image?.url;
+  // image handling: nếu api trả object Image (không phải array)
+  const img = item.Image ?? null;
+  const imgUrl =
+    !imageError && (img?.formats?.large?.url || img?.url)
+      ? img?.formats?.large?.url ?? img?.url
+      : `/placeholder.svg?height=600&width=1000&text=${encodeURIComponent(
+          item.Title ?? "News Image"
+        )}`;
+
+  const imgAlt = img?.alternativeText || item.Title || "News Image";
 
   return (
     <div className="container mx-auto py-12">
@@ -239,42 +165,48 @@ export default function NewsDetailClient() {
       </Link>
 
       <article className="bg-white rounded-xl shadow overflow-hidden">
-        <div className="bg-red-600 text-white px-8 py-12">
+        <header className="bg-red-600 text-white px-8 py-12">
           <h1 className="text-4xl font-bold mb-4">{item.Title}</h1>
           <div className="flex gap-4 text-red-100">
             <time>{new Date(item.Date).toLocaleDateString("vi-VN")}</time>
             <span>{item.Author}</span>
           </div>
-        </div>
+        </header>
 
         {imgUrl && (
           <div className="my-8 mx-8 rounded-lg overflow-hidden">
+            {/* dùng <img> để dễ bắt lỗi onError; bạn có thể thay bằng next/image nếu muốn */}
             <Image
               src={imgUrl}
-              alt={item.Image?.alternativeText || item.Title}
-              width={item.Image?.width ?? 1200}
-              height={item.Image?.height ?? 600}
+              alt={imgAlt}
               className="object-cover w-full"
-              unoptimized
+              onError={() => setImageError(true)}
             />
           </div>
         )}
 
         <div className="p-8 space-y-16">
-          {item.ContentSection?.map((sec, idx) => (
+          {item.ContentSection?.map((sec) => (
             <section key={sec.id} id={`sec-${sec.id}`}>
-              <h2 className="text-2xl font-bold mb-4">
-                {idx + 1}. {sec.SectionTitle}
-              </h2>
+              <h2 className="text-2xl font-bold mb-4">{sec.SectionTitle}</h2>
               <div className="bg-gray-100 p-6 rounded-lg">
-                <RenderContent raw={sec.SectionContent} />
+                {/* nếu nội dung markdown/HTML, bạn có thể xử lý parse; ở đây render raw with line breaks */}
+                <div
+                  className="text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{
+                    __html: sec.SectionContent.replace(/\n/g, "<br/>"),
+                  }}
+                />
               </div>
             </section>
           ))}
 
           <div className="mt-16 pt-8 border-t flex justify-between">
             <span className="text-gray-500">
-              Cập nhật: {new Date(item.updatedAt).toLocaleDateString("vi-VN")}
+              Cập nhật:{" "}
+              {item.updatedAt
+                ? new Date(item.updatedAt).toLocaleDateString("vi-VN")
+                : "-"}
             </span>
             <Link href="/news" className="text-red-600 hover:underline">
               ← Xem thêm tin tức
