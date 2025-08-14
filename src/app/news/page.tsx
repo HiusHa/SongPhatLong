@@ -1,4 +1,3 @@
-// app/news/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -9,23 +8,27 @@ import NewsCard, { NewsItem } from "./news-card";
 
 type ApiResp<T> = { data: T[]; meta?: unknown };
 
-export default function NewsPage() {
+export default function NewsListPage() {
   const [items, setItems] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
         const resp = (await api.getNews()) as AxiosResponse<ApiResp<NewsItem>>;
         const list = resp?.data?.data ?? [];
-        setItems(list);
+        if (mounted) setItems(list);
       } catch (err) {
-        console.error("Lỗi getNews (list):", err);
-        setItems([]);
+        console.error("getNews list error:", err);
+        if (mounted) setItems([]);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   if (loading) {
@@ -39,9 +42,7 @@ export default function NewsPage() {
   return (
     <div className="container mx-auto py-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((n) => (
-        <div key={n.documentId}>
-          <NewsCard n={n} />
-        </div>
+        <NewsCard key={n.documentId || n.id} item={n} />
       ))}
     </div>
   );

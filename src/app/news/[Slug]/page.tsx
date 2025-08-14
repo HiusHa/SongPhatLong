@@ -1,12 +1,11 @@
-// app/news/[slug]/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import api from "@/app/_utils/globalApi";
 import { Loader } from "@/components/loader";
+import api from "@/app/_utils/globalApi";
 import type { AxiosResponse } from "axios";
 
 type ContentSection = {
@@ -21,7 +20,7 @@ export type NewsDetail = {
   SlugURL?: string | null;
   Title: string;
   Date: string;
-  Author?: string;
+  Author: string;
   updatedAt: string;
   Image?: {
     alternativeText?: string | null;
@@ -34,7 +33,7 @@ export type NewsDetail = {
       small?: { url: string };
       thumbnail?: { url: string };
     };
-  };
+  } | null;
   ContentSection: ContentSection[];
 };
 
@@ -51,7 +50,7 @@ function slugify(text?: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-/** Simple markdown-like renderer used by you (kept minimal) */
+/** RenderContent: simple markdown-like parser (bold, images, links) */
 function RenderContent({ raw }: { raw: string }) {
   const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
   const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -69,12 +68,13 @@ function RenderContent({ raw }: { raw: string }) {
           `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
           "g"
         );
+
         type Part =
           | { type: "html"; content: string }
           | { type: "img"; alt: string; url: string }
           | { type: "link"; text: string; url: string };
-        const parts: Part[] = [];
 
+        const parts: Part[] = [];
         let lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = combined.exec(bolded))) {
@@ -99,7 +99,6 @@ function RenderContent({ raw }: { raw: string }) {
 
           lastIndex = m.index + match.length;
         }
-
         if (lastIndex < bolded.length) {
           parts.push({ type: "html", content: bolded.slice(lastIndex) });
         }
@@ -134,13 +133,15 @@ function RenderContent({ raw }: { raw: string }) {
               if (p.type === "link") {
                 let href = p.url;
                 let text = p.text;
+                const lower = text.toLowerCase().trim();
                 try {
-                  const lower = text.toLowerCase().trim();
                   if (lower === "link" || lower === href) {
                     const u = new URL(href);
                     text = u.hostname.replace(/^www\./, "");
                   }
-                } catch {}
+                } catch {
+                  // noop
+                }
                 if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
                   [href, text] = [text, href];
                 }
@@ -166,33 +167,34 @@ function RenderContent({ raw }: { raw: string }) {
 }
 
 export default function NewsDetailPage() {
-  // typed useParams
   const params = useParams() as { slug?: string | string[] };
   const rawSlug = params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
   const router = useRouter();
 
   const [item, setItem] = useState<NewsDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       if (!slug) {
         setLoading(false);
         return;
       }
+
       try {
         const resp = (await api.getNews()) as AxiosResponse<
           ApiResp<NewsDetail>
         >;
         const all = resp?.data?.data ?? [];
 
-        // 1) match custom SlugURL
+        // 1) match SlugURL exact
         let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
 
-        // 2) match auto slugify(Title)
+        // 2) match generated slug from Title
         if (!found) {
-          found = all.find((n) => slugify(n.Title || "") === slug);
+          found = all.find((n) => slugify(n.Title) === slug);
         }
 
         // 3) fallback documentId or id
@@ -203,17 +205,23 @@ export default function NewsDetailPage() {
         }
 
         if (!found) {
-          router.replace("/news");
+          // nếu không tìm thấy, chuyển về list
+          if (mounted) {
+            router.replace("/news");
+          }
         } else {
-          setItem(found);
+          if (mounted) setItem(found);
         }
       } catch (err) {
-        console.error("Fetch news error:", err);
-        router.replace("/news");
+        console.error("Fetch news detail error:", err);
+        if (mounted) router.replace("/news");
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
+    return () => {
+      mounted = false;
+    };
   }, [slug, router]);
 
   if (loading) {
