@@ -1,34 +1,19 @@
 // app/news/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
-
-import Link from "next/link";
+import * as React from "react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Loader } from "@/components/loader";
 import api from "@/app/_utils/globalApi";
 import type { AxiosResponse } from "axios";
-import NewsCard from "./news-card";
+import { NewsCard, type NewsItem } from "./news-card";
 
-type NewsItem = {
-  id: number;
-  documentId: string;
-  SlugURL?: string | null;
-  Title: string;
-  Date: string;
-  Author: string;
-  Image?: {
-    url: string;
-    alternativeText?: string | null;
-    formats?: {
-      large?: { url: string };
-      medium?: { url: string };
-      small?: { url: string };
-      thumbnail?: { url: string };
-    };
-  };
+const pageVariants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
 };
-
-type ApiResp<T> = { data: T[]; meta?: unknown };
 
 function slugify(text?: string) {
   if (!text) return "";
@@ -37,51 +22,76 @@ function slugify(text?: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
 
-export default function NewsPageClient() {
-  const [items, setItems] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function NewsPage() {
+  const [news, setNews] = useState<(NewsItem & { __slug?: string })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const resp = (await api.getNews()) as AxiosResponse<ApiResp<NewsItem>>;
-        const list = resp?.data?.data ?? [];
-        setItems(list);
+        // Lưu ý: api.getNews() expected to return AxiosResponse<{ data: NewsItem[] }>
+        const resp = await api.getNews();
+        const typed = resp as AxiosResponse<{ data: NewsItem[] }>;
+        const list: NewsItem[] = typed.data?.data ?? [];
+
+        const withSlug = list.map((n) => {
+          const r =
+            (n as unknown as Record<string, unknown>)["SlugURL"] ??
+            (n as unknown as Record<string, unknown>)["slugURL"];
+          const rawSlug = typeof r === "string" ? r.trim() : "";
+          const generated =
+            rawSlug || slugify(n.Title) || String(n.documentId ?? n.id);
+          return { ...n, __slug: generated };
+        });
+
+        setNews(withSlug);
       } catch (err) {
-        console.error("Lỗi getNews (list):", err);
-        setItems([]);
+        console.error("Error fetching news:", err);
+        setNews([]);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     })();
   }, []);
 
-  if (loading)
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
       </div>
     );
+  }
 
   return (
-    <div className="container mx-auto py-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((n) => {
-        const computed = (
-          n.SlugURL?.trim() ||
-          slugify(n.Title) ||
-          n.documentId
-        ).toString();
-        const href = `/news/${encodeURIComponent(computed)}`;
-        return (
-          <Link key={n.documentId} href={href} prefetch={false}>
-            <NewsCard item={n} />
-          </Link>
-        );
-      })}
-    </div>
+    <motion.div
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      className="min-h-screen bg-white"
+    >
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Tin tức</h1>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {news.map((n) => (
+            <NewsCard
+              key={n.id}
+              news={n}
+              slug={n.__slug ?? String(n.documentId ?? n.id)}
+            />
+          ))}
+        </div>
+
+        {news.length === 0 && (
+          <p className="text-center text-gray-600 mt-8">Không có tin tức.</p>
+        )}
+      </div>
+    </motion.div>
   );
 }

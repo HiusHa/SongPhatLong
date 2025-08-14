@@ -4,7 +4,6 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import type { AxiosResponse } from "axios";
 import api from "@/app/_utils/globalApi"; // đảm bảo export getNews() ở đây
@@ -176,7 +175,7 @@ export default function NewsDetails() {
         {imgUrl && (
           <div className="my-8 mx-8 rounded-lg overflow-hidden">
             {/* dùng <img> để dễ bắt lỗi onError; bạn có thể thay bằng next/image nếu muốn */}
-            <Image
+            <img
               src={imgUrl}
               alt={imgAlt}
               className="object-cover w-full"
