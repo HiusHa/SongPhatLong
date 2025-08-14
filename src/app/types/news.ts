@@ -1,25 +1,15 @@
-// src/app/types/news.ts
-
+// src/types/news.ts
 export type ImageFormat = {
   url: string;
+  ext?: string | null;
   width?: number;
   height?: number;
-  ext?: string;
-  mime?: string;
   size?: number;
-  // thêm các trường khác nếu cần (provider_metadata, hash,...)
-  [key: string]: unknown;
+  sizeInBytes?: number;
+  mime?: string;
 };
 
-export type ImageFormats = {
-  large?: ImageFormat;
-  medium?: ImageFormat;
-  small?: ImageFormat;
-  thumbnail?: ImageFormat;
-  // nếu Strapi có thêm keys, còn safe vì index signature ở ImageFormat
-};
-
-export type NewsImage = {
+export type ImageObject = {
   id?: number;
   documentId?: string;
   name?: string;
@@ -27,12 +17,23 @@ export type NewsImage = {
   caption?: string | null;
   width?: number;
   height?: number;
-  formats?: ImageFormats;
-  url: string;
+  formats?: {
+    large?: ImageFormat;
+    medium?: ImageFormat;
+    small?: ImageFormat;
+    thumbnail?: ImageFormat;
+  };
+  hash?: string;
+  ext?: string | null;
+  mime?: string;
+  size?: number;
+  url?: string;
   previewUrl?: string | null;
   provider?: string;
+  provider_metadata?: Record<string, unknown> | null;
   createdAt?: string;
   updatedAt?: string;
+  publishedAt?: string;
 };
 
 export type ContentSection = {
@@ -47,8 +48,17 @@ export type NewsDetail = {
   SlugURL?: string | null;
   Title: string;
   Date: string;
-  Author: string;
-  updatedAt: string;
-  Image?: NewsImage;
+  Author?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  publishedAt?: string;
+  Image?: ImageObject | null;
   ContentSection: ContentSection[];
 };
+
+export type NewsListItem = Pick<
+  NewsDetail,
+  "id" | "documentId" | "SlugURL" | "Title" | "Date" | "Author" | "Image"
+>;
+
+export type ApiResp<T> = { data: T[]; meta?: unknown };

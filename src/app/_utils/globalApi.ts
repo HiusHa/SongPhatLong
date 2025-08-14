@@ -57,6 +57,20 @@ if (process.env.NODE_ENV !== "production") {
   );
 }
 
+// News type (you can export from types file instead)
+export type NewsDetail = {
+  id: number;
+  documentId: string;
+  SlugURL?: string | null;
+  Title: string;
+  Date: string;
+  Author: string;
+  updatedAt: string;
+  publishedAt?: string;
+  Image?: string; // Use string if Image is a URL, or define a proper type if it's an object
+  ContentSection?: unknown[];
+};
+
 const getLatestProducts = (): Promise<AxiosResponse> =>
   axiosClient.get("/products?populate=*");
 
@@ -69,8 +83,14 @@ const getCategories = (): Promise<AxiosResponse> =>
 const getBanners = (): Promise<AxiosResponse> =>
   axiosClient.get("/banners?populate=*");
 
-const getNews = (): Promise<AxiosResponse> =>
-  axiosClient.get("/news?populate=*");
+// Generic API response type for paginated or list data
+export type ApiResp<T> = {
+  data: T[];
+  meta?: Record<string, unknown>;
+};
+
+export const getNews = (): Promise<AxiosResponse<ApiResp<NewsDetail>>> =>
+  axiosClient.get<ApiResp<NewsDetail>>("/news?populate=*");
 
 const submitContactForm = (
   formData: ContactFormData

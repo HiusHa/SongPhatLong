@@ -1,6 +1,7 @@
+// app/news/[slug]/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -14,17 +15,17 @@ type ContentSection = {
   SectionContent: string;
 };
 
-type NewsDetail = {
+export type NewsDetail = {
   id: number;
   documentId: string;
   SlugURL?: string | null;
   Title: string;
   Date: string;
-  Author: string;
+  Author?: string;
   updatedAt: string;
   Image?: {
     alternativeText?: string | null;
-    url: string;
+    url?: string;
     width?: number;
     height?: number;
     formats?: {
@@ -50,26 +51,122 @@ function slugify(text?: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+/** Simple markdown-like renderer used by you (kept minimal) */
 function RenderContent({ raw }: { raw: string }) {
-  const paras = raw.split(/\n{1,2}/).filter(Boolean);
+  const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
+  const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const LINK_MD_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const BOLD_MD = /\*\*([^*]+)\*\*/g;
+
   return (
     <div className="space-y-6">
-      {paras.map((p, i) => (
-        <div
-          key={i}
-          className="text-gray-700 leading-relaxed"
-          dangerouslySetInnerHTML={{
-            __html: p
-              .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-              .replace(/\n/g, "<br/>"),
-          }}
-        />
-      ))}
+      {paras.map((para, idx) => {
+        const bolded = para.replace(
+          BOLD_MD,
+          (_m, txt) => `<strong>${txt}</strong>`
+        );
+        const combined = new RegExp(
+          `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
+          "g"
+        );
+        type Part =
+          | { type: "html"; content: string }
+          | { type: "img"; alt: string; url: string }
+          | { type: "link"; text: string; url: string };
+        const parts: Part[] = [];
+
+        let lastIndex = 0;
+        let m: RegExpExecArray | null;
+        while ((m = combined.exec(bolded))) {
+          const match = m[0];
+          const imgAlt = m[1];
+          const imgUrl = m[2];
+          const linkText = m[3];
+          const linkUrl = m[4];
+
+          if (m.index > lastIndex) {
+            parts.push({
+              type: "html",
+              content: bolded.slice(lastIndex, m.index),
+            });
+          }
+
+          if (imgUrl && imgAlt !== undefined) {
+            parts.push({ type: "img", alt: imgAlt, url: imgUrl });
+          } else if (linkText && linkUrl) {
+            parts.push({ type: "link", text: linkText, url: linkUrl });
+          }
+
+          lastIndex = m.index + match.length;
+        }
+
+        if (lastIndex < bolded.length) {
+          parts.push({ type: "html", content: bolded.slice(lastIndex) });
+        }
+
+        return (
+          <div key={idx} className="text-gray-700 leading-relaxed">
+            {parts.map((p, i) => {
+              if (p.type === "html") {
+                return (
+                  <span
+                    key={i}
+                    dangerouslySetInnerHTML={{
+                      __html: p.content.replace(/\n/g, "<br/>"),
+                    }}
+                  />
+                );
+              }
+              if (p.type === "img") {
+                return (
+                  <div key={i} className="my-4">
+                    <Image
+                      src={p.url}
+                      alt={p.alt || ""}
+                      width={800}
+                      height={600}
+                      className="w-full rounded-lg object-contain"
+                      unoptimized
+                    />
+                  </div>
+                );
+              }
+              if (p.type === "link") {
+                let href = p.url;
+                let text = p.text;
+                try {
+                  const lower = text.toLowerCase().trim();
+                  if (lower === "link" || lower === href) {
+                    const u = new URL(href);
+                    text = u.hostname.replace(/^www\./, "");
+                  }
+                } catch {}
+                if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
+                  [href, text] = [text, href];
+                }
+                return (
+                  <a
+                    key={i}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-600 hover:underline break-all"
+                  >
+                    {text}
+                  </a>
+                );
+              }
+              return null;
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 export default function NewsDetailPage() {
+  // typed useParams
   const params = useParams() as { slug?: string | string[] };
   const rawSlug = params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
@@ -84,7 +181,6 @@ export default function NewsDetailPage() {
         setLoading(false);
         return;
       }
-
       try {
         const resp = (await api.getNews()) as AxiosResponse<
           ApiResp<NewsDetail>
@@ -95,22 +191,24 @@ export default function NewsDetailPage() {
         let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
 
         // 2) match auto slugify(Title)
-        if (!found) found = all.find((n) => slugify(n.Title) === slug);
+        if (!found) {
+          found = all.find((n) => slugify(n.Title || "") === slug);
+        }
 
         // 3) fallback documentId or id
-        if (!found)
+        if (!found) {
           found = all.find(
             (n) => n.documentId === slug || String(n.id) === slug
           );
+        }
 
         if (!found) {
-          // nếu không tìm => quay về /news
           router.replace("/news");
         } else {
           setItem(found);
         }
       } catch (err) {
-        console.error("Fetch news (detail) error:", err);
+        console.error("Fetch news error:", err);
         router.replace("/news");
       } finally {
         setLoading(false);
