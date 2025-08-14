@@ -1,3 +1,4 @@
+// app/news/[slug]/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -14,7 +15,14 @@ type ContentSection = {
   SectionContent: string;
 };
 
-export type NewsDetail = {
+type ImageFormats = {
+  large?: { url: string };
+  medium?: { url: string };
+  small?: { url: string };
+  thumbnail?: { url: string };
+};
+
+type NewsDetail = {
   id: number;
   documentId: string;
   SlugURL?: string | null;
@@ -24,16 +32,11 @@ export type NewsDetail = {
   updatedAt: string;
   Image?: {
     alternativeText?: string | null;
-    url?: string;
+    url: string;
     width?: number;
     height?: number;
-    formats?: {
-      large?: { url: string };
-      medium?: { url: string };
-      small?: { url: string };
-      thumbnail?: { url: string };
-    };
-  } | null;
+    formats?: ImageFormats;
+  };
   ContentSection: ContentSection[];
 };
 
@@ -50,7 +53,7 @@ function slugify(text?: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-/** RenderContent: simple markdown-like parser (bold, images, links) */
+/* small markdown-ish renderer used earlier (keeps types) */
 function RenderContent({ raw }: { raw: string }) {
   const paras = raw.split(/\n{1,2}/).filter((p) => p.trim());
   const IMAGE_MD_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -68,13 +71,12 @@ function RenderContent({ raw }: { raw: string }) {
           `${IMAGE_MD_RE.source}|${LINK_MD_RE.source}`,
           "g"
         );
-
         type Part =
           | { type: "html"; content: string }
           | { type: "img"; alt: string; url: string }
           | { type: "link"; text: string; url: string };
-
         const parts: Part[] = [];
+
         let lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = combined.exec(bolded))) {
@@ -99,6 +101,7 @@ function RenderContent({ raw }: { raw: string }) {
 
           lastIndex = m.index + match.length;
         }
+
         if (lastIndex < bolded.length) {
           parts.push({ type: "html", content: bolded.slice(lastIndex) });
         }
@@ -130,18 +133,18 @@ function RenderContent({ raw }: { raw: string }) {
                   </div>
                 );
               }
+              // link
               if (p.type === "link") {
                 let href = p.url;
                 let text = p.text;
-                const lower = text.toLowerCase().trim();
                 try {
+                  const lower = text.toLowerCase().trim();
                   if (lower === "link" || lower === href) {
                     const u = new URL(href);
                     text = u.hostname.replace(/^www\./, "");
                   }
-                } catch {
-                  // noop
-                }
+                } catch {}
+                // swap if [url](label) reversed
                 if (!/^https?:\/\//i.test(href) && /^https?:\/\//i.test(text)) {
                   [href, text] = [text, href];
                 }
@@ -166,38 +169,37 @@ function RenderContent({ raw }: { raw: string }) {
   );
 }
 
-export default function NewsDetailPage() {
+export default function NewsDetailClient() {
   const params = useParams() as { slug?: string | string[] };
   const rawSlug = params.slug;
   const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
   const router = useRouter();
 
   const [item, setItem] = useState<NewsDetail | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
     (async () => {
       if (!slug) {
         setLoading(false);
         return;
       }
-
       try {
         const resp = (await api.getNews()) as AxiosResponse<
           ApiResp<NewsDetail>
         >;
-        const all = resp?.data?.data ?? [];
+        const payload = resp?.data?.data ?? [];
+        const all: NewsDetail[] = payload;
 
         // 1) match SlugURL exact
-        let found = all.find((n) => n.SlugURL && n.SlugURL.trim() === slug);
+        let found = all.find((n) => !!n.SlugURL && n.SlugURL?.trim() === slug);
 
-        // 2) match generated slug from Title
+        // 2) match auto slug(Title)
         if (!found) {
           found = all.find((n) => slugify(n.Title) === slug);
         }
 
-        // 3) fallback documentId or id
+        // 3) fallbacks: documentId or id
         if (!found) {
           found = all.find(
             (n) => n.documentId === slug || String(n.id) === slug
@@ -205,23 +207,17 @@ export default function NewsDetailPage() {
         }
 
         if (!found) {
-          // nếu không tìm thấy, chuyển về list
-          if (mounted) {
-            router.replace("/news");
-          }
+          router.replace("/news");
         } else {
-          if (mounted) setItem(found);
+          setItem(found);
         }
       } catch (err) {
-        console.error("Fetch news detail error:", err);
-        if (mounted) router.replace("/news");
+        console.error("Fetch news error:", err);
+        router.replace("/news");
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
   }, [slug, router]);
 
   if (loading) {
@@ -234,7 +230,7 @@ export default function NewsDetailPage() {
 
   if (!item) return null;
 
-  const imgUrl = item.Image?.formats?.large?.url || item.Image?.url;
+  const imgUrl = item.Image?.formats?.large?.url ?? item.Image?.url;
 
   return (
     <div className="container mx-auto py-12">
@@ -256,8 +252,8 @@ export default function NewsDetailPage() {
             <Image
               src={imgUrl}
               alt={item.Image?.alternativeText || item.Title}
-              width={item.Image?.width || 1200}
-              height={item.Image?.height || 600}
+              width={item.Image?.width ?? 1200}
+              height={item.Image?.height ?? 600}
               className="object-cover w-full"
               unoptimized
             />
@@ -265,7 +261,7 @@ export default function NewsDetailPage() {
         )}
 
         <div className="p-8 space-y-16">
-          {item.ContentSection.map((sec, idx) => (
+          {item.ContentSection?.map((sec, idx) => (
             <section key={sec.id} id={`sec-${sec.id}`}>
               <h2 className="text-2xl font-bold mb-4">
                 {idx + 1}. {sec.SectionTitle}

@@ -1,10 +1,10 @@
+// app/news/news-card.tsx
 "use client";
 
 import React from "react";
 import Image from "next/image";
-import Link from "next/link";
 
-export type NewsItem = {
+type NewsItem = {
   id: number;
   documentId: string;
   SlugURL?: string | null;
@@ -20,51 +20,22 @@ export type NewsItem = {
       small?: { url: string };
       thumbnail?: { url: string };
     };
-  } | null;
+  };
 };
 
-function slugify(text?: string) {
-  if (!text) return "";
-  return text
-    .toString()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-function computeSlugFor(n: NewsItem) {
-  const fromSlug = n.SlugURL?.trim();
-  if (fromSlug) return fromSlug;
-  const s = slugify(n.Title);
-  if (s) return s;
-  if (n.documentId) return n.documentId;
-  return String(n.id);
-}
-
 export default function NewsCard({ item }: { item: NewsItem }) {
-  const imageUrl =
-    item.Image?.formats?.large?.url || item.Image?.url || "/placeholder.svg";
-  const href = `/news/${encodeURIComponent(computeSlugFor(item))}`;
-
+  const img =
+    item.Image?.formats?.medium?.url ?? item.Image?.url ?? "/placeholder.svg";
   return (
-    <Link
-      href={href}
-      // disable prefetch to avoid Next automatic prefetch that can alter client-fetch behaviour
-      prefetch={false}
-      className="block bg-white rounded-lg shadow hover:shadow-md overflow-hidden"
-    >
-      <div className="relative aspect-video w-full h-0">
-        <div className="absolute inset-0">
-          <Image
-            src={imageUrl}
-            alt={item.Image?.alternativeText || item.Title}
-            fill
-            className="object-cover"
-            unoptimized
-          />
-        </div>
+    <div className="bg-white rounded-lg shadow hover:shadow-md overflow-hidden">
+      <div className="relative aspect-video">
+        <Image
+          src={img}
+          alt={item.Image?.alternativeText ?? item.Title}
+          fill
+          className="object-cover"
+          unoptimized
+        />
       </div>
       <div className="p-4">
         <h3 className="font-semibold line-clamp-2">{item.Title}</h3>
@@ -72,6 +43,6 @@ export default function NewsCard({ item }: { item: NewsItem }) {
           {new Date(item.Date).toLocaleDateString("vi-VN")}
         </p>
       </div>
-    </Link>
+    </div>
   );
 }
