@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/app/_utils/globalApi";
 import Image from "next/image";
@@ -87,22 +87,33 @@ const LinkRenderer = ({
   );
 };
 
-interface PageProps {
-  params: Promise<{ slug: string }> | { slug: string };
-}
-
-export default function NewsDetailPage({ params }: PageProps) {
+export default function NewsDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const [item, setItem] = useState<NewsItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const resolvedParams = params instanceof Promise ? use(params) : params;
-  const slugParam = resolvedParams.slug;
+  const [slugParam, setSlugParam] = useState<string>("");
+
+  useEffect(() => {
+    const resolveParams = async () => {
+      try {
+        const resolvedParams = await params;
+        setSlugParam(resolvedParams.slug);
+      } catch (err) {
+        console.error("[v0] [CLIENT] Error resolving params:", err);
+        router.push("/news");
+      }
+    };
+    resolveParams();
+  }, [params, router]);
 
   useEffect(() => {
     if (!slugParam) {
-      router.push("/news");
       return;
     }
 
