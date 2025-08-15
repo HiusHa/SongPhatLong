@@ -29,9 +29,18 @@ export default function NewsPage() {
           "[v0] [CLIENT] API Key present:",
           !!process.env.NEXT_PUBLIC_API_KEY
         );
+        console.log(
+          "[v0] [CLIENT] API Key length:",
+          process.env.NEXT_PUBLIC_API_KEY?.length || 0
+        );
+        console.log(
+          "[v0] [CLIENT] API URL:",
+          "https://songphatlong-admin.onrender.com/api/news?populate=*"
+        );
 
         const resp = await api.getNews();
         console.log("[v0] [CLIENT] News API response status:", resp.status);
+        console.log("[v0] [CLIENT] Raw response data:", resp.data);
 
         const typed = resp as AxiosResponse<{ data: NewsItem[] }>;
         const list: NewsItem[] = typed.data?.data ?? [];
@@ -52,7 +61,10 @@ export default function NewsPage() {
           };
         };
         console.error("[v0] [CLIENT] News API Error:", error);
-        setError(error.message || "Failed to load news");
+        console.error("[v0] [CLIENT] Error message:", error.message);
+        console.error("[v0] [CLIENT] Error response:", error.response?.data);
+        console.error("[v0] [CLIENT] Error status:", error.response?.status);
+        setError(`Error fetching news: ${error.message}`);
       } finally {
         setLoading(false);
       }

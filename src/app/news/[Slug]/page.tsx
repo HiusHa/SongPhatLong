@@ -88,7 +88,7 @@ const LinkRenderer = ({
 };
 
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string }> | { slug: string };
 }
 
 export default function NewsDetailPage({ params }: PageProps) {
@@ -97,7 +97,7 @@ export default function NewsDetailPage({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const resolvedParams = use(params);
+  const resolvedParams = params instanceof Promise ? use(params) : params;
   const slugParam = resolvedParams.slug;
 
   useEffect(() => {
@@ -135,6 +135,16 @@ export default function NewsDetailPage({ params }: PageProps) {
 
         console.log("[v0] [CLIENT] News items count:", list.length);
 
+        console.log("[v0] [CLIENT] Looking for slug:", slugParam);
+        list.forEach((n, index) => {
+          const slugField = readSlugField(n);
+          const titleSlug = slugify(n.Title);
+          const idSlug = String(n.documentId ?? n.id ?? "");
+          console.log(
+            `[v0] [CLIENT] Item ${index}: slugField="${slugField}", titleSlug="${titleSlug}", idSlug="${idSlug}", title="${n.Title}"`
+          );
+        });
+
         let found = list.find((n) => readSlugField(n) === slugParam);
         if (!found) {
           found = list.find((n) => slugify(n.Title) === slugParam);
@@ -147,13 +157,15 @@ export default function NewsDetailPage({ params }: PageProps) {
 
         console.log("[v0] [CLIENT] Found news item:", !!found);
 
-        if (!found) {
+        if (found) {
+          console.log("[v0] [CLIENT] Setting news item:", found.Title);
+          setItem(found);
+        } else {
           console.log(
             "[v0] [CLIENT] News item not found, redirecting to /news"
           );
-          router.push("/news");
-        } else {
-          setItem(found);
+          setError("Không tìm thấy tin tức");
+          // router.push("/news")
         }
       } catch (err: unknown) {
         const errorObj = err as Error & {
