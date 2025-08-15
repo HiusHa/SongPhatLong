@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/app/_utils/globalApi";
-import { Loader } from "@/components/loader";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
@@ -51,10 +50,6 @@ function readSlugField(n: NewsItem): string | null {
   return typeof r === "string" && r.trim() !== "" ? (r as string).trim() : null;
 }
 
-// Hàm resolveHref đã được tích hợp vào LinkRenderer, không cần định nghĩa riêng
-// function resolveHref(raw?: string): string { ... }
-
-// Định nghĩa component LinkRenderer để sử dụng trong ReactMarkdown
 const LinkRenderer = ({
   href,
   children,
@@ -64,7 +59,6 @@ const LinkRenderer = ({
 
   const trimmed = href.trim();
 
-  // internal route (relative)
   if (trimmed.startsWith("/")) {
     return (
       <Link href={trimmed} className="text-blue-600 hover:underline" {...props}>
@@ -73,15 +67,10 @@ const LinkRenderer = ({
     );
   }
 
-  // external (open new tab)
   const resolvedHref = (() => {
-    // Keep mailto / tel
     if (/^(mailto:|tel:)/i.test(trimmed)) return trimmed;
-    // Already absolute
     if (/^https?:\/\//i.test(trimmed)) return trimmed;
-    // Scheme-relative //example.com -> add https:
     if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
-    // Common domain without protocol (e.g. "www.facebook.com/...")
     return `https://${trimmed}`;
   })();
 
@@ -98,46 +87,53 @@ const LinkRenderer = ({
   );
 };
 
-export default function NewsDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const slugParam = (params?.slug as string) ?? "";
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default function NewsDetailPage({ params }: PageProps) {
   const [item, setItem] = useState<NewsItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  const resolvedParams = use(params);
+  const slugParam = resolvedParams.slug;
 
   useEffect(() => {
-    (async () => {
-      if (!slugParam) {
-        setLoading(false);
-        return;
-      }
+    if (!slugParam) {
+      router.push("/news");
+      return;
+    }
 
-      setLoading(true);
+    const fetchNewsDetail = async () => {
       try {
+        console.log("[v0] [CLIENT] Fetching news for slug:", slugParam);
+
         const allResp = await api.getNews();
+        console.log(
+          "[v0] [CLIENT] News detail API response status:",
+          allResp.status
+        );
+
         type NewsApiResponse = {
           data?: { data?: NewsItem[] } | NewsItem[];
         };
         const typed = allResp as NewsApiResponse;
         let list: NewsItem[] = [];
+
         if (
-          typed &&
-          typeof typed === "object" &&
-          "data" in typed &&
-          Array.isArray((typed.data as { data?: NewsItem[] })?.data)
+          typed.data &&
+          typeof typed.data === "object" &&
+          "data" in typed.data &&
+          Array.isArray(typed.data.data)
         ) {
-          list = (typed.data as { data?: NewsItem[] }).data!;
-        } else if (
-          typed &&
-          typeof typed === "object" &&
-          "data" in typed &&
-          Array.isArray(typed.data)
-        ) {
-          list = typed.data as NewsItem[];
-        } else if (Array.isArray(typed)) {
-          list = typed as NewsItem[];
+          list = typed.data.data;
+        } else if (Array.isArray(typed.data)) {
+          list = typed.data;
         }
+
+        console.log("[v0] [CLIENT] News items count:", list.length);
 
         let found = list.find((n) => readSlugField(n) === slugParam);
         if (!found) {
@@ -149,29 +145,70 @@ export default function NewsDetailPage() {
           );
         }
 
+        console.log("[v0] [CLIENT] Found news item:", !!found);
+
         if (!found) {
-          router.replace("/news");
+          console.log(
+            "[v0] [CLIENT] News item not found, redirecting to /news"
+          );
+          router.push("/news");
         } else {
           setItem(found);
         }
-      } catch (err) {
-        console.error("Fetch news detail error:", err);
-        router.replace("/news");
+      } catch (err: unknown) {
+        const errorObj = err as Error & {
+          response?: {
+            status?: number;
+            data?: {
+              error?: {
+                message?: string;
+                status?: number;
+                name?: string;
+              };
+            };
+          };
+        };
+        console.error("[v0] [CLIENT] Fetch news detail error:", errorObj);
+        setError(errorObj.message || "Failed to load news");
       } finally {
         setLoading(false);
       }
-    })();
+    };
+
+    fetchNewsDetail();
   }, [slugParam, router]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader />
+      <div className="container mx-auto py-12">
+        <Link href="/news" className="text-red-600 hover:underline mb-6 block">
+          ← Quay lại tin tức
+        </Link>
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang tải tin tức...</p>
+        </div>
       </div>
     );
   }
 
-  if (!item) return null;
+  if (error) {
+    return (
+      <div className="container mx-auto py-12">
+        <Link href="/news" className="text-red-600 hover:underline mb-6 block">
+          ← Quay lại tin tức
+        </Link>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-red-800 font-bold mb-2">Lỗi tải tin tức</h2>
+          <p className="text-red-700 mb-4">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!item) {
+    return null;
+  }
 
   const img = item.Image;
   const imgUrl = img?.url ?? "";
@@ -196,7 +233,7 @@ export default function NewsDetailPage() {
           </div>
         </header>
 
-        {imgUrl && !imageError && (
+        {imgUrl && (
           <div
             className="my-8 mx-8 rounded-lg overflow-hidden relative"
             style={{ height: 400 }}
@@ -208,7 +245,6 @@ export default function NewsDetailPage() {
               sizes="(max-width: 768px) 100vw, 1000px"
               style={{ objectFit: "cover" }}
               unoptimized={!imgUrl.startsWith("/")}
-              onError={() => setImageError(true)}
             />
           </div>
         )}

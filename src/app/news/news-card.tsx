@@ -1,8 +1,6 @@
 "use client";
-
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
 
 export type NewsImage = {
   url?: string;
@@ -23,18 +21,20 @@ export type NewsItem = {
   Author?: string | null;
   Image?: NewsImage | null;
   ContentSection?: ContentSection[] | null;
+  SlugURL?: string | null;
+  slugURL?: string | null;
+  updatedAt?: string | null;
 };
 
 export function NewsCard({ news, slug }: { news: NewsItem; slug: string }) {
   const thumb = news.Image?.url ?? "";
   const title = news.Title ?? "";
-  const [imageError, setImageError] = useState(false);
 
   return (
     <article className="border rounded-md overflow-hidden shadow-sm">
       <Link href={`/news/${encodeURIComponent(slug)}`} prefetch={false}>
         <div className="h-48 w-full relative bg-gray-100">
-          {thumb && !imageError ? (
+          {thumb ? (
             <Image
               src={thumb || "/placeholder.svg"}
               alt={news.Image?.alternativeText ?? title}
@@ -42,7 +42,6 @@ export function NewsCard({ news, slug }: { news: NewsItem; slug: string }) {
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               style={{ objectFit: "cover" }}
               unoptimized={!thumb.startsWith("/")}
-              onError={() => setImageError(true)}
             />
           ) : (
             <div className="flex items-center justify-center h-48 text-gray-500">
@@ -63,3 +62,5 @@ export function NewsCard({ news, slug }: { news: NewsItem; slug: string }) {
     </article>
   );
 }
+
+export default NewsCard;

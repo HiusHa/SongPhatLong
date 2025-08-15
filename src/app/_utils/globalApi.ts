@@ -10,7 +10,7 @@ const axiosClient = axios.create({
   baseURL: apiURL,
   headers: {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
+    ...(apiKey && { Authorization: `Bearer ${apiKey}` }),
   },
 });
 
@@ -62,13 +62,23 @@ export type NewsDetail = {
   id: number;
   documentId: string;
   SlugURL?: string | null;
+  slugURL?: string | null;
   Title: string;
   Date: string;
   Author: string;
   updatedAt: string;
   publishedAt?: string;
-  Image?: string; // Use string if Image is a URL, or define a proper type if it's an object
-  ContentSection?: unknown[];
+  Image?: {
+    url?: string;
+    alternativeText?: string | null;
+  } | null;
+  ContentSection?:
+    | {
+        id: number;
+        SectionTitle?: string | null;
+        SectionContent?: string | null;
+      }[]
+    | null;
 };
 
 const getLatestProducts = (): Promise<AxiosResponse> =>
