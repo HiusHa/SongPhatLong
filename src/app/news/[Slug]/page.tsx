@@ -7,7 +7,7 @@ import { Loader } from "@/components/loader";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
-import { AnchorHTMLAttributes } from "react";
+import type { AnchorHTMLAttributes } from "react";
 
 type NewsImage = {
   url?: string;
@@ -67,10 +67,8 @@ const LinkRenderer = ({
   // internal route (relative)
   if (trimmed.startsWith("/")) {
     return (
-      <Link href={trimmed} passHref>
-        <a {...props} className="text-blue-600 hover:underline">
-          {children}
-        </a>
+      <Link href={trimmed} className="text-blue-600 hover:underline" {...props}>
+        {children}
       </Link>
     );
   }
@@ -114,6 +112,7 @@ export default function NewsDetailPage() {
         setLoading(false);
         return;
       }
+
       setLoading(true);
       try {
         const allResp = await api.getNews();
@@ -203,11 +202,12 @@ export default function NewsDetailPage() {
             style={{ height: 400 }}
           >
             <Image
-              src={imgUrl}
+              src={imgUrl || "/placeholder.svg"}
               alt={imgAlt}
               fill
               sizes="(max-width: 768px) 100vw, 1000px"
               style={{ objectFit: "cover" }}
+              unoptimized={!imgUrl.startsWith("/")}
               onError={() => setImageError(true)}
             />
           </div>

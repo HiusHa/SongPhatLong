@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import api from "@/app/_utils/globalApi";
 import type { AxiosResponse } from "axios";
 import { Loader } from "@/components/loader";
-import { NewsCard, NewsItem } from "./news-card";
+import { NewsCard, type NewsItem } from "./news-card";
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },

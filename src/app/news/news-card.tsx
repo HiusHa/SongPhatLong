@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-// import Image from "next/image";
-import React from "react";
+import Image from "next/image";
+import { useState } from "react";
 
 export type NewsImage = {
   url?: string;
@@ -28,19 +28,21 @@ export type NewsItem = {
 export function NewsCard({ news, slug }: { news: NewsItem; slug: string }) {
   const thumb = news.Image?.url ?? "";
   const title = news.Title ?? "";
+  const [imageError, setImageError] = useState(false);
 
   return (
     <article className="border rounded-md overflow-hidden shadow-sm">
       <Link href={`/news/${encodeURIComponent(slug)}`} prefetch={false}>
         <div className="h-48 w-full relative bg-gray-100">
-          {thumb ? (
-            // next/image optional, keep simple if external urls
-            // you can replace with Image component if domains configured
-            // <Image src={thumb} alt={news.Image?.alternativeText ?? title} fill />
-            <img
-              src={thumb}
+          {thumb && !imageError ? (
+            <Image
+              src={thumb || "/placeholder.svg"}
               alt={news.Image?.alternativeText ?? title}
-              className="object-cover w-full h-48"
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              style={{ objectFit: "cover" }}
+              unoptimized={!thumb.startsWith("/")}
+              onError={() => setImageError(true)}
             />
           ) : (
             <div className="flex items-center justify-center h-48 text-gray-500">
