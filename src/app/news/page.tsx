@@ -32,21 +32,18 @@ export default function NewsPage() {
     (async () => {
       try {
         const resp = await api.getNews();
-        // resp might be AxiosResponse<{ data: NewsItem[] }> OR already data array depending on your util
+        // resp is AxiosResponse<{ data: NewsItem[] }>
         const typed = resp as AxiosResponse<{ data: NewsItem[] }>;
-        const list: NewsItem[] =
-          (typed && Array.isArray(typed.data?.data) ? typed.data.data : []) ||
-          (Array.isArray((resp as unknown as { data?: unknown })?.data)
-            ? (resp as unknown as { data: NewsItem[] }).data
-            : []);
+        const list: NewsItem[] = typed.data?.data ?? [];
 
         const withSlug = list.map((n) => {
+          // Read both "SlugURL" and "slugURL" safely
           const r =
             (n as unknown as Record<string, unknown>)["SlugURL"] ??
             (n as unknown as Record<string, unknown>)["slugURL"];
-          const rawSlug = typeof r === "string" ? (r as string).trim() : "";
+          const rawSlug = typeof r === "string" ? r.trim() : "";
           const generated =
-            rawSlug || slugify(n.Title) || String(n.documentId ?? n.id ?? "");
+            rawSlug || slugify(n.Title) || String(n.documentId ?? n.id);
           return { ...n, __slug: generated };
         });
 
