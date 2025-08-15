@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+
 import api from "@/app/_utils/globalApi";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
@@ -95,7 +95,6 @@ export default function NewsDetailPage({
   const [item, setItem] = useState<NewsItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const [slugParam, setSlugParam] = useState<string>("");
 
@@ -106,11 +105,12 @@ export default function NewsDetailPage({
         setSlugParam(resolvedParams.slug);
       } catch (err) {
         console.error("[v0] [CLIENT] Error resolving params:", err);
-        router.push("/news");
+        setError("Lỗi tải trang");
+        setLoading(false);
       }
     };
     resolveParams();
-  }, [params, router]);
+  }, [params]);
 
   useEffect(() => {
     if (!slugParam) {
@@ -119,6 +119,7 @@ export default function NewsDetailPage({
 
     const fetchNewsDetail = async () => {
       try {
+        setError(null);
         console.log("[v0] [CLIENT] Fetching news for slug:", slugParam);
 
         const allResp = await api.getNews();
@@ -171,12 +172,11 @@ export default function NewsDetailPage({
         if (found) {
           console.log("[v0] [CLIENT] Setting news item:", found.Title);
           setItem(found);
+          setError(null);
         } else {
-          console.log(
-            "[v0] [CLIENT] News item not found, redirecting to /news"
-          );
+          console.log("[v0] [CLIENT] News item not found");
           setError("Không tìm thấy tin tức");
-          // router.push("/news")
+          setItem(null);
         }
       } catch (err: unknown) {
         const errorObj = err as Error & {
@@ -193,13 +193,15 @@ export default function NewsDetailPage({
         };
         console.error("[v0] [CLIENT] Fetch news detail error:", errorObj);
         setError(errorObj.message || "Failed to load news");
+        setItem(null);
       } finally {
+        console.log("[v0] [CLIENT] Setting loading to false");
         setLoading(false);
       }
     };
 
     fetchNewsDetail();
-  }, [slugParam, router]);
+  }, [slugParam]);
 
   if (loading) {
     return (
