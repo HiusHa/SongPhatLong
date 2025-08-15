@@ -1,142 +1,170 @@
-// src/app/news/[slug]/page.tsx
 "use client";
 
-import * as React from "react";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import type { AxiosResponse } from "axios";
-import api from "@/app/_utils/globalApi"; // đảm bảo export getNews() ở đây
+import api from "@/app/_utils/globalApi";
 import { Loader } from "@/components/loader";
+import Image from "next/image";
+import ReactMarkdown from "react-markdown";
+import Link from "next/link";
+import { AnchorHTMLAttributes } from "react";
 
-/* --- Types --- */
+type NewsImage = {
+  url?: string;
+  alternativeText?: string | null;
+};
+
 type ContentSection = {
   id: number;
-  SectionTitle: string;
-  SectionContent: string;
+  SectionTitle?: string | null;
+  SectionContent?: string | null;
 };
 
-type NewsDetail = {
+type NewsItem = {
   id: number;
-  documentId?: string;
-  SlugURL?: string | null;
+  documentId?: string | null;
   Title: string;
-  Date: string;
-  Author?: string;
-  updatedAt?: string;
-  Image?: {
-    id?: number;
-    alternativeText?: string | null;
-    url: string;
-    width?: number;
-    height?: number;
-    formats?: {
-      large?: { url: string };
-      medium?: { url: string };
-      small?: { url: string };
-      thumbnail?: { url: string };
-    };
-  } | null;
+  Date?: string | null;
+  Author?: string | null;
+  Image?: NewsImage | null;
   ContentSection?: ContentSection[] | null;
+  SlugURL?: string | null;
+  slugURL?: string | null;
+  updatedAt?: string | null;
 };
 
-/* --- util helpers --- */
-function slugify(text?: string) {
-  if (!text) return "";
-  return text
+function slugify(s?: string) {
+  if (!s) return "";
+  return s
     .toString()
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
 
-/**
- * đọc trường SlugURL với hai khả năng SlugURL / slugURL (để tương thích)
- */
-function readSlugField(n: NewsDetail): string | null {
+function readSlugField(n: NewsItem): string | null {
   const r =
     (n as unknown as Record<string, unknown>)["SlugURL"] ??
     (n as unknown as Record<string, unknown>)["slugURL"];
   return typeof r === "string" && r.trim() !== "" ? (r as string).trim() : null;
 }
 
-/* --- Component --- */
-export default function NewsDetails() {
-  const params = useParams() as { slug?: string | string[] };
-  const rawSlug = params.slug;
-  const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
-  const router = useRouter();
+// Hàm resolveHref đã được tích hợp vào LinkRenderer, không cần định nghĩa riêng
+// function resolveHref(raw?: string): string { ... }
 
-  const [item, setItem] = useState<NewsDetail | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [imageError, setImageError] = useState<boolean>(false);
+// Định nghĩa component LinkRenderer để sử dụng trong ReactMarkdown
+const LinkRenderer = ({
+  href,
+  children,
+  ...props
+}: AnchorHTMLAttributes<HTMLAnchorElement>) => {
+  if (!href) return <a {...props}>{children}</a>;
+
+  const trimmed = href.trim();
+
+  // internal route (relative)
+  if (trimmed.startsWith("/")) {
+    return (
+      <Link href={trimmed} passHref>
+        <a {...props} className="text-blue-600 hover:underline">
+          {children}
+        </a>
+      </Link>
+    );
+  }
+
+  // external (open new tab)
+  const resolvedHref = (() => {
+    // Keep mailto / tel
+    if (/^(mailto:|tel:)/i.test(trimmed)) return trimmed;
+    // Already absolute
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    // Scheme-relative //example.com -> add https:
+    if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
+    // Common domain without protocol (e.g. "www.facebook.com/...")
+    return `https://${trimmed}`;
+  })();
+
+  return (
+    <a
+      href={resolvedHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:underline"
+      {...props}
+    >
+      {children}
+    </a>
+  );
+};
+
+export default function NewsDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const slugParam = (params?.slug as string) ?? "";
+  const [item, setItem] = useState<NewsItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-
     (async () => {
-      setIsLoading(true);
-      setItem(null);
-      setImageError(false);
-
-      if (!slug) {
-        setIsLoading(false);
+      if (!slugParam) {
+        setLoading(false);
         return;
       }
-
+      setLoading(true);
       try {
-        // call API to get all news (same approach as services)
-        const resp = (await api.getNews()) as AxiosResponse<{
-          data: NewsDetail[];
-        }>;
-        // Strapi style: resp.data.data (safety check)
-        const list: NewsDetail[] = Array.isArray(resp.data?.data)
-          ? resp.data.data
-          : [];
-
-        // 1) try custom SlugURL field (supports SlugURL / slugURL)
-        let found = list.find((n) => {
-          const raw = readSlugField(n);
-          return raw === slug;
-        });
-
-        // 2) fallback: generated slug from Title
-        if (!found) {
-          found = list.find((n) => slugify(n.Title) === slug);
+        const allResp = await api.getNews();
+        type NewsApiResponse = {
+          data?: { data?: NewsItem[] } | NewsItem[];
+        };
+        const typed = allResp as NewsApiResponse;
+        let list: NewsItem[] = [];
+        if (
+          typed &&
+          typeof typed === "object" &&
+          "data" in typed &&
+          Array.isArray((typed.data as { data?: NewsItem[] })?.data)
+        ) {
+          list = (typed.data as { data?: NewsItem[] }).data!;
+        } else if (
+          typed &&
+          typeof typed === "object" &&
+          "data" in typed &&
+          Array.isArray(typed.data)
+        ) {
+          list = typed.data as NewsItem[];
+        } else if (Array.isArray(typed)) {
+          list = typed as NewsItem[];
         }
 
-        // 3) fallback: documentId or id
+        let found = list.find((n) => readSlugField(n) === slugParam);
+        if (!found) {
+          found = list.find((n) => slugify(n.Title) === slugParam);
+        }
         if (!found) {
           found = list.find(
-            (n) =>
-              String(n.documentId ?? n.id) === slug || String(n.id) === slug
+            (n) => String(n.documentId ?? n.id ?? "") === slugParam
           );
         }
 
         if (!found) {
-          // not found -> redirect to list
-          if (mounted) router.replace("/news");
+          router.replace("/news");
         } else {
-          if (mounted) setItem(found);
+          setItem(found);
         }
       } catch (err) {
-        // log and redirect to list page (same behavior as services)
-        console.error("Fetch news error:", err);
-        if (mounted) router.replace("/news");
+        console.error("Fetch news detail error:", err);
+        router.replace("/news");
       } finally {
-        if (mounted) setIsLoading(false);
+        setLoading(false);
       }
     })();
+  }, [slugParam, router]);
 
-    return () => {
-      mounted = false;
-    };
-  }, [slug, router]);
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
@@ -144,18 +172,11 @@ export default function NewsDetails() {
     );
   }
 
-  if (!item) return null; // already redirected
+  if (!item) return null;
 
-  // image handling: nếu api trả object Image (không phải array)
-  const img = item.Image ?? null;
-  const imgUrl =
-    !imageError && (img?.formats?.large?.url || img?.url)
-      ? img?.formats?.large?.url ?? img?.url
-      : `/placeholder.svg?height=600&width=1000&text=${encodeURIComponent(
-          item.Title ?? "News Image"
-        )}`;
-
-  const imgAlt = img?.alternativeText || item.Title || "News Image";
+  const img = item.Image;
+  const imgUrl = img?.url ?? "";
+  const imgAlt = img?.alternativeText ?? item.Title;
 
   return (
     <div className="container mx-auto py-12">
@@ -167,18 +188,26 @@ export default function NewsDetails() {
         <header className="bg-red-600 text-white px-8 py-12">
           <h1 className="text-4xl font-bold mb-4">{item.Title}</h1>
           <div className="flex gap-4 text-red-100">
-            <time>{new Date(item.Date).toLocaleDateString("vi-VN")}</time>
-            <span>{item.Author}</span>
+            <time>
+              {item.Date
+                ? new Date(item.Date).toLocaleDateString("vi-VN")
+                : "-"}
+            </time>
+            <span>{item.Author ?? "-"}</span>
           </div>
         </header>
 
-        {imgUrl && (
-          <div className="my-8 mx-8 rounded-lg overflow-hidden">
-            {/* dùng <img> để dễ bắt lỗi onError; bạn có thể thay bằng next/image nếu muốn */}
-            <img
+        {imgUrl && !imageError && (
+          <div
+            className="my-8 mx-8 rounded-lg overflow-hidden relative"
+            style={{ height: 400 }}
+          >
+            <Image
               src={imgUrl}
               alt={imgAlt}
-              className="object-cover w-full"
+              fill
+              sizes="(max-width: 768px) 100vw, 1000px"
+              style={{ objectFit: "cover" }}
               onError={() => setImageError(true)}
             />
           </div>
@@ -187,15 +216,20 @@ export default function NewsDetails() {
         <div className="p-8 space-y-16">
           {item.ContentSection?.map((sec) => (
             <section key={sec.id} id={`sec-${sec.id}`}>
-              <h2 className="text-2xl font-bold mb-4">{sec.SectionTitle}</h2>
+              {sec.SectionTitle && (
+                <h2 className="text-2xl font-bold mb-4">{sec.SectionTitle}</h2>
+              )}
+
               <div className="bg-gray-100 p-6 rounded-lg">
-                {/* nếu nội dung markdown/HTML, bạn có thể xử lý parse; ở đây render raw with line breaks */}
-                <div
-                  className="text-gray-700 leading-relaxed"
-                  dangerouslySetInnerHTML={{
-                    __html: sec.SectionContent.replace(/\n/g, "<br/>"),
-                  }}
-                />
+                <div className="text-gray-700 leading-relaxed">
+                  <ReactMarkdown
+                    components={{
+                      a: LinkRenderer,
+                    }}
+                  >
+                    {sec.SectionContent ?? ""}
+                  </ReactMarkdown>
+                </div>
               </div>
             </section>
           ))}

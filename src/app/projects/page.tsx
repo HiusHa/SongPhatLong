@@ -22,7 +22,7 @@ const projects: Project[] = [
     location: "ĐÀ NẴNG",
     description:
       "Cung cấp thiết bị và giải pháp PCCC cho Danapha Tower, công trình cao 15 tầng nổi và 3 tầng hầm, xây dựng trên diện tích đất 616,8 m2 với diện tích xây dựng khoảng 7.780 m2.",
-    image: "/Images/project1.jpg",
+    image: "/Images/project2.jpg",
   },
   {
     id: "2",
@@ -30,7 +30,7 @@ const projects: Project[] = [
     location: "ĐÀ NẴNG",
     description:
       "Chúng tôi tự hào cung cấp giải pháp và thiết bị PCCC cho khách sạn Garrya Đà Nẵng, tọa lạc trên 1.042,9 m2 đất với quy mô 2 tầng hầm và 9 tầng nổi. Công trình được thiết kế hiện đại, đáp ứng đầy đủ các tiêu chuẩn an toàn và chất lượng cao nhất.",
-    image: "/Images/project2.jpg",
+    image: "/Images/project1.jpg",
   },
 ];
 

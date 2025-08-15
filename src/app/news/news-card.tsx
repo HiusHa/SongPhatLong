@@ -1,98 +1,63 @@
-// app/news/news-card.tsx
 "use client";
 
-import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { motion } from "framer-motion";
+// import Image from "next/image";
+import React from "react";
 
-type ContentSection = {
+export type NewsImage = {
+  url?: string;
+  alternativeText?: string | null;
+};
+
+export type ContentSection = {
   id: number;
-  SectionTitle: string;
-  SectionContent: string;
+  SectionTitle?: string | null;
+  SectionContent?: string | null;
 };
 
 export type NewsItem = {
   id: number;
-  documentId?: string;
-  SlugURL?: string | null;
+  documentId?: string | null;
   Title: string;
-  Date: string;
-  Author?: string;
-  Image?: {
-    url?: string;
-    alternativeText?: string | null;
-    formats?: {
-      thumbnail?: { url: string };
-      small?: { url: string };
-      medium?: { url: string };
-      large?: { url: string };
-    };
-    width?: number;
-    height?: number;
-  } | null;
+  Date?: string | null;
+  Author?: string | null;
+  Image?: NewsImage | null;
   ContentSection?: ContentSection[] | null;
 };
 
-export function NewsCard({
-  news,
-  slug,
-}: {
-  news: NewsItem & { __slug?: string };
-  slug: string;
-}) {
-  const imgUrl =
-    news.Image?.formats?.thumbnail?.url ||
-    news.Image?.formats?.small?.url ||
-    news.Image?.url ||
-    null;
+export function NewsCard({ news, slug }: { news: NewsItem; slug: string }) {
+  const thumb = news.Image?.url ?? "";
+  const title = news.Title ?? "";
 
   return (
-    <motion.article
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow overflow-hidden"
-    >
-      <Link href={`/news/${slug}`} className="block">
-        <div className="w-full h-48 relative bg-gray-100">
-          {imgUrl ? (
-            <Image
-              src={imgUrl}
-              alt={news.Image?.alternativeText || news.Title}
-              fill
-              className="object-cover"
-              unoptimized
+    <article className="border rounded-md overflow-hidden shadow-sm">
+      <Link href={`/news/${encodeURIComponent(slug)}`} prefetch={false}>
+        <div className="h-48 w-full relative bg-gray-100">
+          {thumb ? (
+            // next/image optional, keep simple if external urls
+            // you can replace with Image component if domains configured
+            // <Image src={thumb} alt={news.Image?.alternativeText ?? title} fill />
+            <img
+              src={thumb}
+              alt={news.Image?.alternativeText ?? title}
+              className="object-cover w-full h-48"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <div className="flex items-center justify-center h-48 text-gray-500">
               No image
             </div>
           )}
         </div>
 
         <div className="p-4">
-          <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
-            {news.Title}
-          </h3>
-
-          <div className="mt-2 text-sm text-gray-500 flex items-center justify-between">
-            <span>{new Date(news.Date).toLocaleDateString("vi-VN")}</span>
-            <span className="ml-3">{news.Author}</span>
-          </div>
-
-          {news.ContentSection && news.ContentSection.length > 0 && (
-            <p className="mt-3 text-sm text-gray-700 line-clamp-3">
-              {/* show small excerpt from first section */}
-              {String(news.ContentSection[0].SectionContent).slice(0, 140)}
-              {String(news.ContentSection[0].SectionContent).length > 140
-                ? "…"
-                : ""}
+          <h3 className="font-semibold text-lg line-clamp-2">{title}</h3>
+          {news.Date && (
+            <p className="text-sm text-gray-500 mt-2">
+              {new Date(news.Date).toLocaleDateString()}
             </p>
           )}
         </div>
       </Link>
-    </motion.article>
+    </article>
   );
 }

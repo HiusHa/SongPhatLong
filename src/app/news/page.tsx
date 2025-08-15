@@ -1,13 +1,11 @@
-// app/news/page.tsx
 "use client";
 
-import * as React from "react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader } from "@/components/loader";
 import api from "@/app/_utils/globalApi";
 import type { AxiosResponse } from "axios";
-import { NewsCard, type NewsItem } from "./news-card";
+import { Loader } from "@/components/loader";
+import { NewsCard, NewsItem } from "./news-card";
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -22,7 +20,6 @@ function slugify(text?: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
@@ -34,18 +31,22 @@ export default function NewsPage() {
   useEffect(() => {
     (async () => {
       try {
-        // Lưu ý: api.getNews() expected to return AxiosResponse<{ data: NewsItem[] }>
         const resp = await api.getNews();
+        // resp might be AxiosResponse<{ data: NewsItem[] }> OR already data array depending on your util
         const typed = resp as AxiosResponse<{ data: NewsItem[] }>;
-        const list: NewsItem[] = typed.data?.data ?? [];
+        const list: NewsItem[] =
+          (typed && Array.isArray(typed.data?.data) ? typed.data.data : []) ||
+          (Array.isArray((resp as unknown as { data?: unknown })?.data)
+            ? (resp as unknown as { data: NewsItem[] }).data
+            : []);
 
         const withSlug = list.map((n) => {
           const r =
             (n as unknown as Record<string, unknown>)["SlugURL"] ??
             (n as unknown as Record<string, unknown>)["slugURL"];
-          const rawSlug = typeof r === "string" ? r.trim() : "";
+          const rawSlug = typeof r === "string" ? (r as string).trim() : "";
           const generated =
-            rawSlug || slugify(n.Title) || String(n.documentId ?? n.id);
+            rawSlug || slugify(n.Title) || String(n.documentId ?? n.id ?? "");
           return { ...n, __slug: generated };
         });
 
