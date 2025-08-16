@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import { useRouter, useParams } from "next/navigation";
 import api from "@/app/_utils/globalApi";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
@@ -27,7 +27,7 @@ type NewsItem = {
   Author?: string | null;
   Image?: NewsImage | null;
   ContentSection?: ContentSection[] | null;
-  SlugURL?: string | null;
+  SlugURL?: string | null; // Strapi can send either
   slugURL?: string | null;
   updatedAt?: string | null;
 };
@@ -47,7 +47,7 @@ function readSlugField(n: NewsItem): string | null {
   const r =
     (n as unknown as Record<string, unknown>)["SlugURL"] ??
     (n as unknown as Record<string, unknown>)["slugURL"];
-  return typeof r === "string" && r.trim() !== "" ? (r as string).trim() : null;
+  return typeof r === "string" && r.trim() !== "" ? r.trim() : null;
 }
 
 const LinkRenderer = ({
@@ -87,121 +87,74 @@ const LinkRenderer = ({
   );
 };
 
-export default function NewsDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default function NewsDetailPage() {
   const [item, setItem] = useState<NewsItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [slugParam, setSlugParam] = useState<string>("");
-
-  useEffect(() => {
-    const resolveParams = async () => {
-      try {
-        const resolvedParams = await params;
-        setSlugParam(resolvedParams.slug);
-      } catch (err) {
-        console.error("[v0] [CLIENT] Error resolving params:", err);
-        setError("Lỗi tải trang");
-        setLoading(false);
-      }
-    };
-    resolveParams();
-  }, [params]);
+  const router = useRouter();
+  const params = useParams<{ slug: string }>();
+  const slugParam = Array.isArray(params.slug) ? params.slug[0] : params.slug;
 
   useEffect(() => {
     if (!slugParam) {
+      router.push("/news");
       return;
     }
 
     const fetchNewsDetail = async () => {
       try {
-        setError(null);
-        console.log("[v0] [CLIENT] Fetching news for slug:", slugParam);
+        console.log("[v0][CLIENT] Fetching news for slug:", slugParam);
 
-        const allResp = await api.getNews();
-        console.log(
-          "[v0] [CLIENT] News detail API response status:",
-          allResp.status
-        );
+        // api.getNews() should return either { data: NewsItem[] } or { data: { data: NewsItem[] } }
+        type NewsApiResponse =
+          | { data: { data: NewsItem[] } }
+          | { data: NewsItem[] }
+          | { data?: unknown };
 
-        type NewsApiResponse = {
-          data?: { data?: NewsItem[] } | NewsItem[];
-        };
-        const typed = allResp as NewsApiResponse;
+        const allResp = (await api.getNews()) as NewsApiResponse;
+
         let list: NewsItem[] = [];
-
         if (
-          typed.data &&
-          typeof typed.data === "object" &&
-          "data" in typed.data &&
-          Array.isArray(typed.data.data)
+          allResp &&
+          typeof allResp === "object" &&
+          "data" in allResp &&
+          allResp.data &&
+          typeof allResp.data === "object" &&
+          "data" in (allResp.data as Record<string, unknown>) &&
+          Array.isArray((allResp.data as { data: unknown }).data)
         ) {
-          list = typed.data.data;
-        } else if (Array.isArray(typed.data)) {
-          list = typed.data;
+          list = (allResp.data as { data: NewsItem[] }).data;
+        } else if (
+          allResp &&
+          typeof allResp === "object" &&
+          "data" in allResp &&
+          Array.isArray((allResp as { data: unknown }).data)
+        ) {
+          list = (allResp as { data: NewsItem[] }).data;
         }
 
-        console.log("[v0] [CLIENT] News items count:", list.length);
-
-        console.log("[v0] [CLIENT] Looking for slug:", slugParam);
-        list.forEach((n, index) => {
-          const slugField = readSlugField(n);
-          const titleSlug = slugify(n.Title);
-          const idSlug = String(n.documentId ?? n.id ?? "");
-          console.log(
-            `[v0] [CLIENT] Item ${index}: slugField="${slugField}", titleSlug="${titleSlug}", idSlug="${idSlug}", title="${n.Title}"`
-          );
-        });
-
-        let found = list.find((n) => readSlugField(n) === slugParam);
-        if (!found) {
-          found = list.find((n) => slugify(n.Title) === slugParam);
-        }
-        if (!found) {
-          found = list.find(
-            (n) => String(n.documentId ?? n.id ?? "") === slugParam
-          );
-        }
-
-        console.log("[v0] [CLIENT] Found news item:", !!found);
+        const found =
+          list.find((n) => readSlugField(n) === slugParam) ??
+          list.find((n) => slugify(n.Title) === slugParam) ??
+          list.find((n) => String(n.documentId ?? n.id ?? "") === slugParam);
 
         if (found) {
-          console.log("[v0] [CLIENT] Setting news item:", found.Title);
           setItem(found);
-          setError(null);
         } else {
-          console.log("[v0] [CLIENT] News item not found");
           setError("Không tìm thấy tin tức");
-          setItem(null);
         }
-      } catch (err: unknown) {
-        const errorObj = err as Error & {
-          response?: {
-            status?: number;
-            data?: {
-              error?: {
-                message?: string;
-                status?: number;
-                name?: string;
-              };
-            };
-          };
-        };
-        console.error("[v0] [CLIENT] Fetch news detail error:", errorObj);
-        setError(errorObj.message || "Failed to load news");
-        setItem(null);
+      } catch (err) {
+        const e = err as Error;
+        console.error("[v0][CLIENT] Fetch news detail error:", e);
+        setError(e.message || "Failed to load news");
       } finally {
-        console.log("[v0] [CLIENT] Setting loading to false");
         setLoading(false);
       }
     };
 
     fetchNewsDetail();
-  }, [slugParam]);
+  }, [slugParam, router]);
 
   if (loading) {
     return (
@@ -210,7 +163,7 @@ export default function NewsDetailPage({
           ← Quay lại tin tức
         </Link>
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto" />
           <p className="mt-4 text-gray-600">Đang tải tin tức...</p>
         </div>
       </div>
@@ -231,13 +184,10 @@ export default function NewsDetailPage({
     );
   }
 
-  if (!item) {
-    return null;
-  }
+  if (!item) return null;
 
-  const img = item.Image;
-  const imgUrl = img?.url ?? "";
-  const imgAlt = img?.alternativeText ?? item.Title;
+  const imgUrl = item.Image?.url ?? "";
+  const imgAlt = item.Image?.alternativeText ?? item.Title;
 
   return (
     <div className="container mx-auto py-12">
@@ -280,14 +230,9 @@ export default function NewsDetailPage({
               {sec.SectionTitle && (
                 <h2 className="text-2xl font-bold mb-4">{sec.SectionTitle}</h2>
               )}
-
               <div className="bg-gray-100 p-6 rounded-lg">
                 <div className="text-gray-700 leading-relaxed">
-                  <ReactMarkdown
-                    components={{
-                      a: LinkRenderer,
-                    }}
-                  >
+                  <ReactMarkdown components={{ a: LinkRenderer }}>
                     {sec.SectionContent ?? ""}
                   </ReactMarkdown>
                 </div>

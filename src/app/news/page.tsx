@@ -5,16 +5,16 @@ import api from "@/app/_utils/globalApi";
 import type { AxiosResponse } from "axios";
 import { NewsCard, type NewsItem } from "./news-card";
 
-function slugify(text?: string) {
-  if (!text) return "";
-  return text
-    .toString()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+// function slugify(text?: string) {
+//   if (!text) return "";
+//   return text
+//     .toString()
+//     .toLowerCase()
+//     .normalize("NFD")
+//     .replace(/[\u0300-\u036f]/g, "")
+//     .replace(/[^a-z0-9]+/g, "-")
+//     .replace(/(^-|-$)/g, "");
+// }
 
 export default function NewsPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -101,35 +101,18 @@ export default function NewsPage() {
     );
   }
 
-  const withSlug = news.map((n) => {
-    const newsItem = n as NewsItem;
-    const r =
-      (newsItem as unknown as Record<string, unknown>)["SlugURL"] ??
-      (newsItem as unknown as Record<string, unknown>)["slugURL"];
-    const rawSlug = typeof r === "string" ? r.trim() : "";
-    const generated =
-      rawSlug ||
-      slugify(newsItem.Title) ||
-      String(newsItem.documentId ?? newsItem.id);
-    return { newsItem, slug: generated };
-  });
-
   return (
     <div className="min-h-screen bg-white">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Tin tức</h1>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {withSlug.map((item, index) => (
-            <NewsCard
-              key={item.newsItem.id || index}
-              news={item.newsItem}
-              slug={item.slug}
-            />
+          {news.map((item, index) => (
+            <NewsCard key={item.id || index} news={item} />
           ))}
         </div>
 
-        {withSlug.length === 0 && (
+        {news.length === 0 && (
           <p className="text-center text-gray-600 mt-8">Không có tin tức.</p>
         )}
       </div>

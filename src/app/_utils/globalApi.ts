@@ -58,28 +58,6 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // News type (you can export from types file instead)
-export type NewsDetail = {
-  id: number;
-  documentId: string;
-  SlugURL?: string | null;
-  slugURL?: string | null;
-  Title: string;
-  Date: string;
-  Author: string;
-  updatedAt: string;
-  publishedAt?: string;
-  Image?: {
-    url?: string;
-    alternativeText?: string | null;
-  } | null;
-  ContentSection?:
-    | {
-        id: number;
-        SectionTitle?: string | null;
-        SectionContent?: string | null;
-      }[]
-    | null;
-};
 
 const getLatestProducts = (): Promise<AxiosResponse> =>
   axiosClient.get("/products?populate=*");
@@ -99,8 +77,8 @@ export type ApiResp<T> = {
   meta?: Record<string, unknown>;
 };
 
-export const getNews = (): Promise<AxiosResponse<ApiResp<NewsDetail>>> =>
-  axiosClient.get<ApiResp<NewsDetail>>("/news?populate=*");
+export const getNews = (): Promise<AxiosResponse> =>
+  axiosClient.get("/news?populate=*");
 
 const submitContactForm = (
   formData: ContactFormData

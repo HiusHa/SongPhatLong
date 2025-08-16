@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -25,9 +26,21 @@ export type NewsItem = {
   updatedAt?: string | null;
 };
 
-export function NewsCard({ news, slug }: { news: NewsItem; slug: string }) {
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+export function NewsCard({ news }: { news: NewsItem }) {
   const thumb = news.Image?.url ?? "";
   const title = news.Title ?? "";
+
+  const slug = news.SlugURL?.trim() || slugify(title);
 
   return (
     <article className="border rounded-md overflow-hidden shadow-sm">
