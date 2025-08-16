@@ -1,121 +1,95 @@
-"use client";
+// app/news/page.tsx
+import Link from "next/link";
+import {
+  firstImageUrl,
+  NewsCardItem,
+  StrapiListResponse,
+  StrapiNewsItem,
+} from "../lib/news";
+import { toSlug } from "../lib/slug";
 
-import { useState, useEffect } from "react";
-import api from "@/app/_utils/globalApi";
-import type { AxiosResponse } from "axios";
-import { NewsCard, type NewsItem } from "./news-card";
+async function fetchNews(): Promise<StrapiListResponse<StrapiNewsItem>> {
+  const base = process.env.STRAPI_URL!;
+  const token = process.env.STRAPI_API_TOKEN;
 
-// function slugify(text?: string) {
-//   if (!text) return "";
-//   return text
-//     .toString()
-//     .toLowerCase()
-//     .normalize("NFD")
-//     .replace(/[\u0300-\u036f]/g, "")
-//     .replace(/[^a-z0-9]+/g, "-")
-//     .replace(/(^-|-$)/g, "");
-// }
+  const res = await fetch(`${base}/api/news?populate=*`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    // cache: "no-store",
+  });
 
-export default function NewsPage() {
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchNews = async () => {
-      try {
-        console.log("[v0] [CLIENT] Starting news fetch");
-        console.log(
-          "[v0] [CLIENT] API Key present:",
-          !!process.env.NEXT_PUBLIC_API_KEY
-        );
-        console.log(
-          "[v0] [CLIENT] API Key length:",
-          process.env.NEXT_PUBLIC_API_KEY?.length || 0
-        );
-        console.log(
-          "[v0] [CLIENT] API URL:",
-          "https://songphatlong-admin.onrender.com/api/news?populate=*"
-        );
-
-        const resp = await api.getNews();
-        console.log("[v0] [CLIENT] News API response status:", resp.status);
-        console.log("[v0] [CLIENT] Raw response data:", resp.data);
-
-        const typed = resp as AxiosResponse<{ data: NewsItem[] }>;
-        const list: NewsItem[] = typed.data?.data ?? [];
-        console.log("[v0] [CLIENT] News items count:", list.length);
-
-        setNews(list);
-      } catch (err: unknown) {
-        const error = err as Error & {
-          response?: {
-            status?: number;
-            data?: {
-              error?: {
-                message?: string;
-                status?: number;
-                name?: string;
-              };
-            };
-          };
-        };
-        console.error("[v0] [CLIENT] News API Error:", error);
-        console.error("[v0] [CLIENT] Error message:", error.message);
-        console.error("[v0] [CLIENT] Error response:", error.response?.data);
-        console.error("[v0] [CLIENT] Error status:", error.response?.status);
-        setError(`Error fetching news: ${error.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNews();
-  }, []);
-
-  if (loading) {
+  if (!res.ok) throw new Error(`News API ${res.status}`);
+  return res.json();
+}
+export default async function NewsPage() {
+  let payload: StrapiListResponse<StrapiNewsItem>;
+  try {
+    payload = await fetchNews();
+  } catch (e: any) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-6">Tin tức</h1>
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Đang tải tin tức...</p>
-          </div>
+      <main className="max-w-5xl mx-auto p-6">
+        <Link href="/" className="text-blue-600">
+          &larr; Quay lại
+        </Link>
+        <div className="mt-4 rounded border border-red-300 bg-red-50 p-4 text-red-700">
+          Lỗi tải tin tức
+          <br /> {String(e?.message ?? e)}
         </div>
-      </div>
+      </main>
     );
   }
 
-  if (error) {
+  const items: NewsCardItem[] = (payload.data ?? []).map((n) => ({
+    id: n.id,
+    title: n.Title,
+    slug:
+      n.SlugURL && n.SlugURL.trim() !== ""
+        ? n.SlugURL
+        : toSlug(n.Title) || String(n.id),
+    dateISO: n.Date,
+    author: n.Author ?? undefined,
+    imageUrl: firstImageUrl(n.Image ?? undefined),
+  }));
+
+  if (!items.length) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-6">Tin tức</h1>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Không thể tải tin tức.</p>
-            <p className="text-red-600 text-sm mt-2">Lỗi: {error}</p>
-          </div>
-        </div>
-      </div>
+      <main className="max-w-5xl mx-auto p-6">
+        <Link href="/" className="text-blue-600">
+          &larr; Quay lại
+        </Link>
+        <p className="mt-4">Chưa có bài viết nào.</p>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Tin tức</h1>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {news.map((item, index) => (
-            <NewsCard key={item.id || index} news={item} />
-          ))}
-        </div>
-
-        {news.length === 0 && (
-          <p className="text-center text-gray-600 mt-8">Không có tin tức.</p>
-        )}
-      </div>
-    </div>
+    <main className="max-w-5xl mx-auto p-6">
+      <h1 className="text-2xl font-semibold mb-6">Tin tức</h1>
+      <ul className="grid gap-6 sm:grid-cols-2">
+        {items.map((it) => (
+          <li key={it.id} className="rounded border p-4 hover:shadow">
+            {it.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={it.imageUrl}
+                alt={it.title}
+                className="w-full h-48 object-cover rounded mb-3"
+              />
+            ) : null}
+            <h2 className="text-lg font-semibold mb-1">
+              <Link href={`/news/${it.slug}`} className="hover:underline">
+                {it.title}
+              </Link>
+            </h2>
+            <p className="text-sm text-gray-600">
+              {new Date(it.dateISO).toLocaleDateString("vi-VN")}
+              {it.author ? ` • ${it.author}` : ""}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </main>
   );
 }
