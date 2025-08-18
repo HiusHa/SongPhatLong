@@ -1,11 +1,11 @@
 // app/news/[slug]/page.tsx
 "use client";
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
-import { Loader } from "@/components/loader";
+
 import {
   type NewsDetail,
   type StrapiListResponse,
@@ -14,6 +14,53 @@ import {
 import { toSlug } from "@/app/lib/slug";
 import api from "@/app/_utils/globalApi";
 import type { AxiosResponse } from "axios";
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  state = { hasError: false, error: undefined };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Error caught by boundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">
+              Something went wrong
+            </h2>
+            <p className="text-gray-600 mb-6">
+              We encountered an error while loading this news article.
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false })}
+              className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+            <Link
+              href="/news"
+              className="block mt-4 text-red-600 hover:underline"
+            >
+              ← Back to News
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Link renderer
 function LinkRenderer(
@@ -86,19 +133,19 @@ function extractImageUrl(imageData: any): string | null {
 }
 
 // Date formatting helper
-const formatDate = (dateString?: string | null) => {
-  if (!dateString) return "-";
-  try {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch (e) {
-    console.error("Date formatting error:", e);
-    return "-";
-  }
-};
+// const formatDate = (dateString?: string | null) => {
+//   if (!dateString) return "-";
+//   try {
+//     return new Date(dateString).toLocaleDateString("vi-VN", {
+//       year: "numeric",
+//       month: "long",
+//       day: "numeric",
+//     });
+//   } catch (e) {
+//     console.error("Date formatting error:", e);
+//     return "-";
+//   }
+// };
 
 export default function NewsDetailPage() {
   const { slug } = useParams();
@@ -106,23 +153,24 @@ export default function NewsDetailPage() {
   const [news, setNews] = useState<NewsDetailWithUpdated | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(true);
   const isDev = process.env.NODE_ENV === "development";
-  const isMounted = useRef(true);
+  const dataFetched = useRef(false);
 
   useEffect(() => {
     // Cleanup function to prevent state updates if component unmounts
     return () => {
-      isMounted.current = false;
+      setIsMounted(false);
     };
   }, []);
 
   useEffect(() => {
-    if (isDev) {
-      console.log("Development mode detected");
-    }
+    // Prevent duplicate data fetching in development mode
+    if (dataFetched.current) return;
 
-    (async () => {
-      if (!slug || !isMounted.current) {
+    const fetchData = async () => {
+      if (!slug || !isMounted) {
         setIsLoading(false);
         return;
       }
@@ -151,10 +199,8 @@ export default function NewsDetailPage() {
         }
 
         if (!found) {
-          console.error("News not found for slug:", slug);
-          if (isMounted.current) {
-            router.replace("/news");
-          }
+          setError("News article not found");
+          router.replace("/news");
           return;
         }
 
@@ -168,7 +214,7 @@ export default function NewsDetailPage() {
             found.SlugURL?.trim() || toSlug(found.Title) || String(found.id),
           dateISO: found.Date,
           author: found.Author ?? undefined,
-          imageUrl: imageUrl || "/placeholder.svg", // Always provide a fallback
+          imageUrl: imageUrl || "/placeholder.svg",
           sections:
             found.ContentSection?.map((s) => ({
               id: s.id,
@@ -179,36 +225,74 @@ export default function NewsDetailPage() {
             (found as { updatedAt?: string | null }).updatedAt ?? undefined,
         };
 
-        if (isDev) {
-          console.log("News data loaded:", detail);
-          console.log("Image URL:", detail.imageUrl);
-        }
-
-        if (isMounted.current) {
+        if (isMounted) {
           setNews(detail);
+          dataFetched.current = true;
         }
       } catch (err) {
         console.error("Fetch news error:", err);
-        if (isMounted.current) {
+        setError("Failed to load news article");
+        if (isMounted) {
           router.replace("/news");
         }
       } finally {
-        if (isMounted.current) {
+        if (isMounted) {
           setIsLoading(false);
         }
       }
-    })();
-  }, [slug, router, isDev]);
+    };
+
+    fetchData();
+  }, [slug, router, isDev, isMounted]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading news article...</p>
+        </div>
       </div>
     );
   }
 
-  if (!news) return null; // already redirected or not found
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <Link
+            href="/news"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            ← Back to News
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!news) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">
+            Article Not Found
+          </h2>
+          <p className="text-gray-600 mb-6">
+            The requested news article could not be found.
+          </p>
+          <Link
+            href="/news"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            ← Back to News
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Ensure imgSrc is always a string
   const imgSrc: string = imageError
@@ -218,76 +302,90 @@ export default function NewsDetailPage() {
   const imgAlt = news.title;
 
   return (
-    <div className="container mx-auto py-12">
-      {isDev && (
-        <div className="mb-4 p-4 bg-yellow-100 text-yellow-800 rounded">
-          <h3 className="font-bold">Debug Info:</h3>
-          <p>Environment: {process.env.NODE_ENV}</p>
-          <p>Image URL: {news.imageUrl}</p>
-          <p>Image Source: {imgSrc}</p>
-          <p>Image Error: {imageError ? "Yes" : "No"}</p>
-        </div>
-      )}
-      <Link href="/news" className="text-red-600 hover:underline mb-6 block">
-        ← Quay lại tin tức
-      </Link>
-      <article className="bg-white rounded-xl shadow overflow-hidden">
-        <header className="bg-red-600 text-white px-8 py-12">
-          <h1 className="text-4xl font-bold mb-4">{news.title}</h1>
-          <div className="flex gap-4 text-red-100">
-            <time>{formatDate(news.dateISO)}</time>
-            <span>{news.author ?? "-"}</span>
-          </div>
-        </header>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8 md:py-12">
+          <Link
+            href="/news"
+            className="text-red-600 hover:underline mb-6 inline-block"
+          >
+            ← Quay lại tin tức
+          </Link>
 
-        {/* Always render the image container */}
-        <div
-          className="my-8 mx-8 rounded-lg overflow-hidden relative"
-          style={{ height: 400 }}
-        >
-          <Image
-            src={imgSrc} // Now guaranteed to be a string
-            alt={imgAlt}
-            fill
-            sizes="(max-width: 768px) 100vw, 1000px"
-            style={{ objectFit: "cover" }}
-            onError={() => {
-              console.error("Image failed to load:", imgSrc);
-              setImageError(true);
-            }}
-            unoptimized={true} // Always unoptimize for external images
-            priority
-          />
-        </div>
-
-        <div className="p-8 space-y-16">
-          {news.sections.map((sec) => (
-            <section key={sec.id} id={`sec-${sec.id}`}>
-              {sec.title && (
-                <h2 className="text-2xl font-bold mb-4">{sec.title}</h2>
-              )}
-              <div className="bg-gray-100 p-6 rounded-lg">
-                <div className="text-gray-700 leading-relaxed prose max-w-none">
-                  <ReactMarkdown
-                    components={{ a: (props) => <LinkRenderer {...props} /> }}
-                  >
-                    {sec.content ?? ""}
-                  </ReactMarkdown>
-                </div>
+          <article className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <header className="bg-red-600 text-white px-6 md:px-8 py-8 md:py-12">
+              <h1 className="text-2xl md:text-4xl font-bold mb-4">
+                {news.title}
+              </h1>
+              <div className="flex flex-wrap gap-4 text-red-100">
+                <time>
+                  {news.dateISO
+                    ? new Date(news.dateISO).toLocaleDateString("vi-VN")
+                    : "-"}
+                </time>
+                <span>{news.author ?? "-"}</span>
               </div>
-            </section>
-          ))}
+            </header>
 
-          <div className="mt-16 pt-8 border-t flex justify-between">
-            <span className="text-gray-500">
-              Cập nhật: {formatDate(news.updatedAt)}
-            </span>
-            <Link href="/news" className="text-red-600 hover:underline">
-              ← Xem thêm tin tức
-            </Link>
-          </div>
+            {/* Image container with fallback */}
+            <div className="relative w-full h-64 md:h-96 bg-gray-200">
+              <Image
+                src={imgSrc}
+                alt={imgAlt}
+                fill
+                sizes="(max-width: 768px) 100vw, 1000px"
+                style={{ objectFit: "cover" }}
+                onError={() => setImageError(true)}
+                unoptimized={true}
+                priority
+              />
+              {imageError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                  <div className="text-gray-500">Image not available</div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 md:p-8 space-y-8">
+              {news.sections.map((sec) => (
+                <section key={sec.id} id={`sec-${sec.id}`} className="mb-8">
+                  {sec.title && (
+                    <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">
+                      {sec.title}
+                    </h2>
+                  )}
+                  <div className="bg-gray-100 p-4 md:p-6 rounded-lg">
+                    <div className="text-gray-700 leading-relaxed prose prose-lg max-w-none">
+                      <ReactMarkdown
+                        components={{
+                          a: (props) => <LinkRenderer {...props} />,
+                        }}
+                      >
+                        {sec.content ?? ""}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                </section>
+              ))}
+
+              <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <span className="text-gray-500">
+                  Cập nhật:{" "}
+                  {news.updatedAt
+                    ? new Date(news.updatedAt).toLocaleDateString("vi-VN")
+                    : "-"}
+                </span>
+                <Link
+                  href="/news"
+                  className="text-red-600 hover:underline inline-block"
+                >
+                  ← Xem thêm tin tức
+                </Link>
+              </div>
+            </div>
+          </article>
         </div>
-      </article>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
