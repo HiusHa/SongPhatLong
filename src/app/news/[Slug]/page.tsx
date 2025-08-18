@@ -1,11 +1,11 @@
 // app/news/[slug]/page.tsx
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
-
+import { Loader } from "@/components/loader";
 import {
   type NewsDetail,
   type StrapiListResponse,
@@ -14,53 +14,6 @@ import {
 import { toSlug } from "@/app/lib/slug";
 import api from "@/app/_utils/globalApi";
 import type { AxiosResponse } from "axios";
-
-// Error Boundary Component
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error?: Error }
-> {
-  state = { hasError: false, error: undefined };
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">
-              Something went wrong
-            </h2>
-            <p className="text-gray-600 mb-6">
-              We encountered an error while loading this news article.
-            </p>
-            <button
-              onClick={() => this.setState({ hasError: false })}
-              className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Try Again
-            </button>
-            <Link
-              href="/news"
-              className="block mt-4 text-red-600 hover:underline"
-            >
-              ← Back to News
-            </Link>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 // Link renderer
 function LinkRenderer(
@@ -132,20 +85,20 @@ function extractImageUrl(imageData: any): string | null {
   return null;
 }
 
-// Date formatting helper
-// const formatDate = (dateString?: string | null) => {
-//   if (!dateString) return "-";
-//   try {
-//     return new Date(dateString).toLocaleDateString("vi-VN", {
-//       year: "numeric",
-//       month: "long",
-//       day: "numeric",
-//     });
-//   } catch (e) {
-//     console.error("Date formatting error:", e);
-//     return "-";
-//   }
-// };
+// Date formatting helper - now used in the component
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) return "-";
+  try {
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch (e) {
+    console.error("Date formatting error:", e);
+    return "-";
+  }
+};
 
 export default function NewsDetailPage() {
   const { slug } = useParams();
@@ -200,7 +153,9 @@ export default function NewsDetailPage() {
 
         if (!found) {
           setError("News article not found");
-          router.replace("/news");
+          if (isMounted) {
+            router.replace("/news");
+          }
           return;
         }
 
@@ -245,12 +200,26 @@ export default function NewsDetailPage() {
     fetchData();
   }, [slug, router, isDev, isMounted]);
 
+  // Add debug information in production
+  useEffect(() => {
+    if (!isDev && !isLoading && !news) {
+      console.log(
+        "Production debug: isLoading=",
+        isLoading,
+        "news=",
+        news,
+        "error=",
+        error
+      );
+    }
+  }, [isLoading, news, error, isDev]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading news article...</p>
+          <Loader />
+          <p className="mt-4 text-gray-600">Loading news article...</p>
         </div>
       </div>
     );
@@ -302,90 +271,87 @@ export default function NewsDetailPage() {
   const imgAlt = news.title;
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8 md:py-12">
-          <Link
-            href="/news"
-            className="text-red-600 hover:underline mb-6 inline-block"
-          >
-            ← Quay lại tin tức
-          </Link>
-
-          <article className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <header className="bg-red-600 text-white px-6 md:px-8 py-8 md:py-12">
-              <h1 className="text-2xl md:text-4xl font-bold mb-4">
-                {news.title}
-              </h1>
-              <div className="flex flex-wrap gap-4 text-red-100">
-                <time>
-                  {news.dateISO
-                    ? new Date(news.dateISO).toLocaleDateString("vi-VN")
-                    : "-"}
-                </time>
-                <span>{news.author ?? "-"}</span>
-              </div>
-            </header>
-
-            {/* Image container with fallback */}
-            <div className="relative w-full h-64 md:h-96 bg-gray-200">
-              <Image
-                src={imgSrc}
-                alt={imgAlt}
-                fill
-                sizes="(max-width: 768px) 100vw, 1000px"
-                style={{ objectFit: "cover" }}
-                onError={() => setImageError(true)}
-                unoptimized={true}
-                priority
-              />
-              {imageError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-                  <div className="text-gray-500">Image not available</div>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 md:p-8 space-y-8">
-              {news.sections.map((sec) => (
-                <section key={sec.id} id={`sec-${sec.id}`} className="mb-8">
-                  {sec.title && (
-                    <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">
-                      {sec.title}
-                    </h2>
-                  )}
-                  <div className="bg-gray-100 p-4 md:p-6 rounded-lg">
-                    <div className="text-gray-700 leading-relaxed prose prose-lg max-w-none">
-                      <ReactMarkdown
-                        components={{
-                          a: (props) => <LinkRenderer {...props} />,
-                        }}
-                      >
-                        {sec.content ?? ""}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                </section>
-              ))}
-
-              <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <span className="text-gray-500">
-                  Cập nhật:{" "}
-                  {news.updatedAt
-                    ? new Date(news.updatedAt).toLocaleDateString("vi-VN")
-                    : "-"}
-                </span>
-                <Link
-                  href="/news"
-                  className="text-red-600 hover:underline inline-block"
-                >
-                  ← Xem thêm tin tức
-                </Link>
-              </div>
-            </div>
-          </article>
+    <div className="min-h-screen bg-gray-50">
+      {/* Debug info for production */}
+      {!isDev && (
+        <div className="bg-yellow-100 text-yellow-800 p-2 text-sm">
+          Production Debug: isLoading={isLoading.toString()}, hasNews={!!news},
+          error={error || "none"}
         </div>
+      )}
+
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        <Link
+          href="/news"
+          className="text-red-600 hover:underline mb-6 inline-block"
+        >
+          ← Quay lại tin tức
+        </Link>
+
+        <article className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <header className="bg-red-600 text-white px-6 md:px-8 py-8 md:py-12">
+            <h1 className="text-2xl md:text-4xl font-bold mb-4">
+              {news.title}
+            </h1>
+            <div className="flex flex-wrap gap-4 text-red-100">
+              <time>{formatDate(news.dateISO)}</time>
+              <span>{news.author ?? "-"}</span>
+            </div>
+          </header>
+
+          {/* Image container with fallback */}
+          <div className="relative w-full h-64 md:h-96 bg-gray-200">
+            <Image
+              src={imgSrc}
+              alt={imgAlt}
+              fill
+              sizes="(max-width: 768px) 100vw, 1000px"
+              style={{ objectFit: "cover" }}
+              onError={() => setImageError(true)}
+              unoptimized={true}
+              priority
+            />
+            {imageError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                <div className="text-gray-500">Image not available</div>
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 md:p-8 space-y-8">
+            {news.sections.map((sec) => (
+              <section key={sec.id} id={`sec-${sec.id}`} className="mb-8">
+                {sec.title && (
+                  <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">
+                    {sec.title}
+                  </h2>
+                )}
+                <div className="bg-gray-100 p-4 md:p-6 rounded-lg">
+                  <div className="text-gray-700 leading-relaxed prose prose-lg max-w-none">
+                    <ReactMarkdown
+                      components={{ a: (props) => <LinkRenderer {...props} /> }}
+                    >
+                      {sec.content ?? ""}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </section>
+            ))}
+
+            <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <span className="text-gray-500">
+                Cập nhật: {formatDate(news.updatedAt)}
+              </span>
+              <Link
+                href="/news"
+                className="text-red-600 hover:underline inline-block"
+              >
+                ← Xem thêm tin tức
+              </Link>
+            </div>
+          </div>
+        </article>
       </div>
-    </ErrorBoundary>
+    </div>
   );
 }
