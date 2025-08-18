@@ -8,29 +8,30 @@ import {
   NewsDetail,
   StrapiListResponse,
   StrapiNewsItem,
-} from "@/app/lib/news";
-import { toSlug } from "@/app/lib/slug";
+} from "@/app/lib/news"; // đổi thành "@/lib/news" nếu lib của bạn ở /lib
+import { toSlug } from "@/app/lib/slug"; // tương tự: đổi thành "@/lib/slug" nếu cần
 
-// Nếu muốn luôn lấy dữ liệu mới:
+// Tùy chọn: bỏ cache nếu muốn luôn dữ liệu mới
 // export const dynamic = "force-dynamic";
 
+// ---- Fetch ----
 async function fetchNews(): Promise<StrapiListResponse<StrapiNewsItem>> {
   const base = process.env.STRAPI_URL!;
   const token = process.env.STRAPI_API_TOKEN;
-
   const res = await fetch(`${base}/api/news?populate=*`, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    // cache: "no-store",
+    cache: "no-store", // ⬅️ tắt cache ở runtime
+    next: { revalidate: 0 }, // ⬅️ thêm cho chắc
   });
 
   if (!res.ok) throw new Error(`News API ${res.status}`);
   return res.json();
 }
 
-// Link renderer để link ngoài mở tab mới, link nội bộ dùng <Link>
+// ---- Link renderer ----
 function LinkRenderer(
   props: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string }
 ) {
@@ -55,30 +56,32 @@ function LinkRenderer(
   );
 }
 
-// mở rộng kiểu để có updatedAt mà không dùng any
-type NewsDetailWithUpdated = NewsDetail & { updatedAt?: string | null };
+// Mở rộng kiểu để có updatedAt (và ép null -> undefined)
+type NewsDetailWithUpdated = NewsDetail & { updatedAt?: string };
 
-export default async function NewsDetailPage({
-  params,
-}: {
-  // ⭐ Next 15: params là Promise
-  params: Promise<{ slug: string }>;
+// ---- Page ----
+export default async function NewsDetailPage(props: {
+  // Hỗ trợ cả Next 14 (object) và Next 15 (Promise)
+  params: { slug: string } | Promise<{ slug: string }>;
 }) {
-  const { slug } = await params; // ⭐ phải await
+  const p = props.params instanceof Promise ? await props.params : props.params;
+  const slug = p.slug;
 
   const payload = await fetchNews();
   const list = payload.data ?? [];
 
-  // Tìm bài theo SlugURL (nếu có) hoặc slugify Title hoặc id/documentId
+  // Tìm bài theo SlugURL, slugify Title, id, hoặc documentId (nếu có)
   const found =
     list.find((n) => (n.SlugURL?.trim() || "") === slug) ||
     list.find((n) => toSlug(n.Title) === slug) ||
     list.find((n) => String(n.id) === slug) ||
-    list.find((n) => String(n.documentId ?? "") === slug);
+    list.find(
+      (n) => String((n as { documentId?: unknown }).documentId ?? "") === slug
+    );
 
   if (!found) return notFound();
 
-  // Chuẩn hóa về model "detail" để UI dùng
+  // Chuẩn hoá model cho UI
   const detail: NewsDetailWithUpdated = {
     id: found.id,
     title: found.Title,
@@ -92,7 +95,7 @@ export default async function NewsDetailPage({
         title: s.SectionTitle ?? undefined,
         content: s.SectionContent ?? undefined,
       })) ?? [],
-    updatedAt: (found as { updatedAt?: string | null }).updatedAt,
+    updatedAt: (found as { updatedAt?: string | null }).updatedAt ?? undefined,
   };
 
   const imgUrl = detail.imageUrl || "";
@@ -143,9 +146,7 @@ export default async function NewsDetailPage({
               <div className="bg-gray-100 p-6 rounded-lg">
                 <div className="text-gray-700 leading-relaxed prose max-w-none">
                   <ReactMarkdown
-                    components={{
-                      a: (props) => <LinkRenderer {...props} />,
-                    }}
+                    components={{ a: (props) => <LinkRenderer {...props} /> }}
                   >
                     {sec.content ?? ""}
                   </ReactMarkdown>
@@ -170,3 +171,5 @@ export default async function NewsDetailPage({
     </div>
   );
 }
+export const runtime = "nodejs"; // chạy trong Node runtime thay vì Edge
+export const dynamic = "force-dynamic"; // luôn render động, không SSG
