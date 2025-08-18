@@ -1,6 +1,6 @@
 // app/news/[slug]/page.tsx
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -107,6 +107,14 @@ export default function NewsDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const isDev = process.env.NODE_ENV === "development";
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    // Cleanup function to prevent state updates if component unmounts
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (isDev) {
@@ -114,7 +122,7 @@ export default function NewsDetailPage() {
     }
 
     (async () => {
-      if (!slug) {
+      if (!slug || !isMounted.current) {
         setIsLoading(false);
         return;
       }
@@ -144,7 +152,9 @@ export default function NewsDetailPage() {
 
         if (!found) {
           console.error("News not found for slug:", slug);
-          router.replace("/news");
+          if (isMounted.current) {
+            router.replace("/news");
+          }
           return;
         }
 
@@ -174,12 +184,18 @@ export default function NewsDetailPage() {
           console.log("Image URL:", detail.imageUrl);
         }
 
-        setNews(detail);
+        if (isMounted.current) {
+          setNews(detail);
+        }
       } catch (err) {
         console.error("Fetch news error:", err);
-        router.replace("/news");
+        if (isMounted.current) {
+          router.replace("/news");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted.current) {
+          setIsLoading(false);
+        }
       }
     })();
   }, [slug, router, isDev]);
