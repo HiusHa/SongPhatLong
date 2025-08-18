@@ -119,6 +119,7 @@ export default function NewsDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiResponse, setApiResponse] = useState<any>(null);
   const [isMounted, setIsMounted] = useState(true);
   const isDev = process.env.NODE_ENV === "development";
   const dataFetched = useRef(false);
@@ -141,11 +142,22 @@ export default function NewsDetailPage() {
       }
 
       try {
+        console.log("Production debug: Starting fetch with slug:", slug);
         const resp = await api.getNews();
+        console.log("Production debug: API response received:", resp);
+
+        // Store the raw API response for debugging
+        setApiResponse(resp);
+
         const typed = resp as AxiosResponse<StrapiListResponse<StrapiNewsItem>>;
         const list: StrapiNewsItem[] = Array.isArray(typed.data?.data)
           ? typed.data.data
           : [];
+
+        console.log(
+          "Production debug: Number of articles in response:",
+          list.length
+        );
 
         // Debug: Log all available slugs in production
         if (!isDev) {
@@ -165,34 +177,64 @@ export default function NewsDetailPage() {
         // 1) Try custom SlugURL (trimmed)
         let found = list.find((n) => {
           const customSlug = readSlugField(n);
-          return customSlug === slug;
+          const match = customSlug === slug;
+          console.log(
+            `Production debug: Comparing customSlug "${customSlug}" with slug "${slug}": ${match}`
+          );
+          return match;
         });
 
         // 2) Try with trimming both sides (for cases with trailing spaces)
         if (!found) {
           found = list.find((n) => {
             const customSlug = readSlugField(n);
-            return customSlug?.trim() === slug?.trim();
+            const match = customSlug?.trim() === slug?.trim();
+            console.log(
+              `Production debug: Comparing trimmed customSlug "${customSlug?.trim()}" with trimmed slug "${slug?.trim()}": ${match}`
+            );
+            return match;
           });
         }
 
         // 3) Fallback to generated slug from title
         if (!found) {
-          found = list.find((n) => toSlug(n.Title) === slug);
+          found = list.find((n) => {
+            const generatedSlug = toSlug(n.Title);
+            const match = generatedSlug === slug;
+            console.log(
+              `Production debug: Comparing generatedSlug "${generatedSlug}" with slug "${slug}": ${match}`
+            );
+            return match;
+          });
         }
 
         // 4) Try with trimming both sides for generated slug
         if (!found) {
-          found = list.find((n) => toSlug(n.Title).trim() === slug?.trim());
+          found = list.find((n) => {
+            const generatedSlug = toSlug(n.Title);
+            const match = generatedSlug.trim() === slug?.trim();
+            console.log(
+              `Production debug: Comparing trimmed generatedSlug "${generatedSlug.trim()}" with trimmed slug "${slug?.trim()}": ${match}`
+            );
+            return match;
+          });
         }
 
         // 5) Fallback to documentId or id
         if (!found) {
-          found = list.find((n) => String(n.documentId ?? n.id) === slug);
+          found = list.find((n) => {
+            const match = String(n.documentId ?? n.id) === slug;
+            console.log(
+              `Production debug: Comparing documentId "${String(
+                n.documentId ?? n.id
+              )}" with slug "${slug}": ${match}`
+            );
+            return match;
+          });
         }
 
         if (!found) {
-          console.error("News not found for slug:", slug);
+          console.error("Production debug: News not found for slug:", slug);
           setError("News article not found");
           if (isMounted) {
             router.replace("/news");
@@ -200,8 +242,11 @@ export default function NewsDetailPage() {
           return;
         }
 
+        console.log("Production debug: Found article:", found.Title);
+
         // Extract image URL with improved function
         const imageUrl = extractImageUrl(found.Image);
+        console.log("Production debug: Extracted image URL:", imageUrl);
 
         const detail: NewsDetailWithUpdated = {
           id: found.id,
@@ -226,7 +271,7 @@ export default function NewsDetailPage() {
           dataFetched.current = true;
         }
       } catch (err) {
-        console.error("Fetch news error:", err);
+        console.error("Production debug: Fetch news error:", err);
         setError("Failed to load news article");
         if (isMounted) {
           router.replace("/news");
@@ -252,8 +297,9 @@ export default function NewsDetailPage() {
         "error=",
         error
       );
+      console.log("Production debug: API response:", apiResponse);
     }
-  }, [isLoading, news, error, isDev]);
+  }, [isLoading, news, error, isDev, apiResponse]);
 
   if (isLoading) {
     return (
@@ -293,9 +339,20 @@ export default function NewsDetailPage() {
           <p className="text-gray-600 mb-6">
             The requested news article could not be found.
           </p>
+          {/* Show more detailed debug info in production */}
+          {!isDev && (
+            <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded text-left text-sm">
+              <p>
+                <strong>Debug Info:</strong>
+              </p>
+              <p>Slug: {slug}</p>
+              <p>API Response: {apiResponse ? "Received" : "None"}</p>
+              <p>Articles count: {apiResponse?.data?.data?.length || 0}</p>
+            </div>
+          )}
           <Link
             href="/news"
-            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors mt-4"
           >
             ← Back to News
           </Link>
