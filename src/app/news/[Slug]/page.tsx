@@ -85,7 +85,7 @@ function extractImageUrl(imageData: any): string | null {
   return null;
 }
 
-// Date formatting helper - now used in the component
+// Date formatting helper
 const formatDate = (dateString?: string | null) => {
   if (!dateString) return "-";
   try {
@@ -100,9 +100,21 @@ const formatDate = (dateString?: string | null) => {
   }
 };
 
+// Helper function to get slug string from params
+function getSlugString(
+  slugParam: string | string[] | undefined
+): string | null {
+  if (!slugParam) return null;
+  if (Array.isArray(slugParam)) {
+    return slugParam[0]; // Take the first segment if it's an array
+  }
+  return slugParam;
+}
+
 export default function NewsDetailPage() {
-  const { slug } = useParams();
+  const params = useParams();
   const router = useRouter();
+  const slug = getSlugString(params.slug);
   const [news, setNews] = useState<NewsDetailWithUpdated | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -135,23 +147,52 @@ export default function NewsDetailPage() {
           ? typed.data.data
           : [];
 
-        // 1) Try custom SlugURL
+        // Debug: Log all available slugs in production
+        if (!isDev) {
+          console.log(
+            "Production debug: Available slugs:",
+            list.map((item) => ({
+              id: item.id,
+              title: item.Title,
+              slugURL: readSlugField(item),
+              generatedSlug: toSlug(item.Title),
+              documentId: item.documentId,
+            }))
+          );
+          console.log("Production debug: Looking for slug:", slug);
+        }
+
+        // 1) Try custom SlugURL (trimmed)
         let found = list.find((n) => {
           const customSlug = readSlugField(n);
           return customSlug === slug;
         });
 
-        // 2) Fallback to generated slug from title
+        // 2) Try with trimming both sides (for cases with trailing spaces)
+        if (!found) {
+          found = list.find((n) => {
+            const customSlug = readSlugField(n);
+            return customSlug?.trim() === slug?.trim();
+          });
+        }
+
+        // 3) Fallback to generated slug from title
         if (!found) {
           found = list.find((n) => toSlug(n.Title) === slug);
         }
 
-        // 3) Fallback to documentId or id
+        // 4) Try with trimming both sides for generated slug
+        if (!found) {
+          found = list.find((n) => toSlug(n.Title).trim() === slug?.trim());
+        }
+
+        // 5) Fallback to documentId or id
         if (!found) {
           found = list.find((n) => String(n.documentId ?? n.id) === slug);
         }
 
         if (!found) {
+          console.error("News not found for slug:", slug);
           setError("News article not found");
           if (isMounted) {
             router.replace("/news");
@@ -204,7 +245,7 @@ export default function NewsDetailPage() {
   useEffect(() => {
     if (!isDev && !isLoading && !news) {
       console.log(
-        "Production debug: isLoading=",
+        "Production debug: Final state - isLoading=",
         isLoading,
         "news=",
         news,
@@ -276,7 +317,7 @@ export default function NewsDetailPage() {
       {!isDev && (
         <div className="bg-yellow-100 text-yellow-800 p-2 text-sm">
           Production Debug: isLoading={isLoading.toString()}, hasNews={!!news},
-          error={error || "none"}
+          error={error || "none"}, slug={slug}
         </div>
       )}
 
