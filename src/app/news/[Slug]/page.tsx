@@ -120,6 +120,7 @@ export default function NewsDetailPage() {
   const [imageError, setImageError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiResponse, setApiResponse] = useState<any>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(true);
   const isDev = process.env.NODE_ENV === "development";
   const dataFetched = useRef(false);
@@ -143,11 +144,25 @@ export default function NewsDetailPage() {
 
       try {
         console.log("Production debug: Starting fetch with slug:", slug);
+        console.log("Production debug: Environment variables:", {
+          NODE_ENV: process.env.NODE_ENV,
+          API_URL_PROD: process.env.NEXT_PUBLIC_API_URL_PROD,
+          API_URL_DEV: process.env.NEXT_PUBLIC_API_URL_DEV,
+        });
+
         const resp = await api.getNews();
         console.log("Production debug: API response received:", resp);
 
         // Store the raw API response for debugging
         setApiResponse(resp);
+
+        // Check if response has the expected structure
+        if (!resp || !resp.data) {
+          console.error("Production debug: Invalid API response structure");
+          setApiError("Invalid API response structure");
+          setError("Failed to load news article");
+          return;
+        }
 
         const typed = resp as AxiosResponse<StrapiListResponse<StrapiNewsItem>>;
         const list: StrapiNewsItem[] = Array.isArray(typed.data?.data)
@@ -158,6 +173,14 @@ export default function NewsDetailPage() {
           "Production debug: Number of articles in response:",
           list.length
         );
+
+        // If no articles found, set error and return
+        if (list.length === 0) {
+          console.error("Production debug: No articles found in API response");
+          setApiError("No articles found in API response");
+          setError("No articles available");
+          return;
+        }
 
         // Debug: Log all available slugs in production
         if (!isDev) {
@@ -237,7 +260,10 @@ export default function NewsDetailPage() {
           console.error("Production debug: News not found for slug:", slug);
           setError("News article not found");
           if (isMounted) {
-            router.replace("/news");
+            // Don't redirect immediately in production for debugging
+            if (isDev) {
+              router.replace("/news");
+            }
           }
           return;
         }
@@ -272,9 +298,13 @@ export default function NewsDetailPage() {
         }
       } catch (err) {
         console.error("Production debug: Fetch news error:", err);
+        setApiError(err instanceof Error ? err.message : "Unknown error");
         setError("Failed to load news article");
         if (isMounted) {
-          router.replace("/news");
+          // Don't redirect immediately in production for debugging
+          if (isDev) {
+            router.replace("/news");
+          }
         }
       } finally {
         if (isMounted) {
@@ -298,8 +328,9 @@ export default function NewsDetailPage() {
         error
       );
       console.log("Production debug: API response:", apiResponse);
+      console.log("Production debug: API error:", apiError);
     }
-  }, [isLoading, news, error, isDev, apiResponse]);
+  }, [isLoading, news, error, isDev, apiResponse, apiError]);
 
   if (isLoading) {
     return (
@@ -318,9 +349,30 @@ export default function NewsDetailPage() {
         <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
           <p className="text-gray-600 mb-6">{error}</p>
+
+          {/* Show more detailed debug info in production */}
+          {!isDev && (
+            <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded text-left text-sm">
+              <p>
+                <strong>Debug Info:</strong>
+              </p>
+              <p>Slug: {slug}</p>
+              <p>API Response: {apiResponse ? "Received" : "None"}</p>
+              <p>API Error: {apiError || "None"}</p>
+              <p>Articles count: {apiResponse?.data?.data?.length || 0}</p>
+              <p>Environment: {process.env.NODE_ENV}</p>
+              <p>
+                API URL:{" "}
+                {process.env.NEXT_PUBLIC_API_URL_PROD ||
+                  process.env.NEXT_PUBLIC_API_URL_DEV ||
+                  "Not set"}
+              </p>
+            </div>
+          )}
+
           <Link
             href="/news"
-            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+            className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors mt-4"
           >
             ← Back to News
           </Link>
@@ -339,6 +391,7 @@ export default function NewsDetailPage() {
           <p className="text-gray-600 mb-6">
             The requested news article could not be found.
           </p>
+
           {/* Show more detailed debug info in production */}
           {!isDev && (
             <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded text-left text-sm">
@@ -347,9 +400,18 @@ export default function NewsDetailPage() {
               </p>
               <p>Slug: {slug}</p>
               <p>API Response: {apiResponse ? "Received" : "None"}</p>
+              <p>API Error: {apiError || "None"}</p>
               <p>Articles count: {apiResponse?.data?.data?.length || 0}</p>
+              <p>Environment: {process.env.NODE_ENV}</p>
+              <p>
+                API URL:{" "}
+                {process.env.NEXT_PUBLIC_API_URL_PROD ||
+                  process.env.NEXT_PUBLIC_API_URL_DEV ||
+                  "Not set"}
+              </p>
             </div>
           )}
+
           <Link
             href="/news"
             className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors mt-4"
