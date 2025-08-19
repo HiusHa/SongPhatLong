@@ -8,13 +8,65 @@ import ReactMarkdown from "react-markdown";
 import { Loader } from "@/components/loader";
 import { type NewsDetail, type StrapiNewsItem } from "@/app/lib/news";
 import { toSlug } from "@/app/lib/slug";
+function FacebookEmbed({ url }: { url: string }) {
+  const encodedUrl = encodeURIComponent(url);
+  const isReel = url.includes("facebook.com/reel");
+  const isVideo = url.includes("facebook.com/videos/");
 
+  return (
+    <div className="my-4 rounded-xl overflow-hidden shadow-lg bg-gray-50">
+      <div className="p-3 bg-blue-600 text-white flex items-center">
+        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+        </svg>
+        <span className="font-medium">Facebook</span>
+      </div>
+      <div className="p-1 bg-white">
+        <iframe
+          src={`https://www.facebook.com/plugins/${
+            isReel || isVideo ? "video" : "post"
+          }.php?href=${encodedUrl}&width=500&show_text=true&height=${
+            isReel || isVideo ? "280" : "500"
+          }&appId`}
+          width="100%"
+          height={isReel || isVideo ? 280 : 500}
+          style={{ border: "none", overflow: "hidden", width: "100%" }}
+          scrolling="no"
+          frameBorder="0"
+          allowFullScreen={true}
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          {...{ allowtransparency: "true" }}
+        />
+      </div>
+    </div>
+  );
+}
 // Link renderer
 function LinkRenderer(
   props: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string }
 ) {
   const href = props.href || "#";
   const isInternal = href.startsWith("/") || href.startsWith("#");
+  const isFacebookLink = href.includes("facebook.com");
+
+  // Handle Facebook links specially
+  if (isFacebookLink) {
+    return (
+      <div className="my-4">
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-red-600 underline font-medium"
+        >
+          {props.children}
+        </a>
+        <FacebookEmbed url={href} />
+      </div>
+    );
+  }
+
+  // Handle regular links
   return isInternal ? (
     <Link href={href} className="text-red-600 underline">
       {props.children}
@@ -306,13 +358,13 @@ export default function NewsDetailPage() {
           </header>
 
           {/* Image container with fallback */}
-          <div className="relative w-full h-64 md:h-96 bg-gray-200">
+          <div className="relative w-full h-full md:h-96 bg-gray-200">
             <Image
               src={imgSrc}
               alt={imgAlt}
               fill
               sizes="(max-width: 768px) 100vw, 1000px"
-              style={{ objectFit: "cover" }}
+              style={{ objectFit: "contain" }}
               onError={() => setImageError(true)}
               unoptimized={true}
               priority

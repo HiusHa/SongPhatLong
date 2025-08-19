@@ -1,5 +1,4 @@
 "use client";
-
 import type React from "react";
 import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
@@ -35,6 +34,198 @@ import { addToCart } from "../../../../utils/cartUtils";
 import api from "@/app/_utils/globalApi";
 import { getProductUrl } from "../../../../utils/slugtify";
 
+// Custom Rich Text Renderer Component
+const RichTextRenderer = ({ content }: { content: any }) => {
+  if (!content || !Array.isArray(content)) return null;
+
+  const renderNode = (node: any, index: number) => {
+    if (!node) return null;
+
+    // Handle text nodes
+    if (node.type === "text") {
+      let text = node.text || "";
+
+      // Apply text formatting
+      if (node.bold) {
+        text = <strong key={index}>{text}</strong>;
+      }
+      if (node.italic) {
+        text = <em key={index}>{text}</em>;
+      }
+      if (node.underline) {
+        text = <u key={index}>{text}</u>;
+      }
+      if (node.strikethrough) {
+        text = <s key={index}>{text}</s>;
+      }
+      if (node.code) {
+        text = (
+          <code
+            key={index}
+            className="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm"
+          >
+            {text}
+          </code>
+        );
+      }
+
+      return text;
+    }
+
+    // Handle block nodes
+    switch (node.type) {
+      case "paragraph":
+        return (
+          <p key={index} className="text-gray-700 leading-relaxed mb-4">
+            {node.children?.map((child: any, i: number) =>
+              renderNode(child, i)
+            )}
+          </p>
+        );
+
+      case "heading":
+        const HeadingTag = `h${node.level || 1}`;
+        const headingClass =
+          node.level === 1
+            ? "text-3xl font-bold mb-4 mt-6"
+            : node.level === 2
+            ? "text-2xl font-bold mb-3 mt-5"
+            : node.level === 3
+            ? "text-xl font-bold mb-2 mt-4"
+            : node.level === 4
+            ? "text-lg font-bold mb-2 mt-3"
+            : "text-md font-bold mb-2 mt-3";
+
+        const processChildren = (children: any[]) => {
+          return children.map((child, i) => {
+            if (child.type === "text") {
+              let text = child.text || "";
+              if (child.bold) text = <strong key={i}>{text}</strong>;
+              if (child.italic) text = <em key={i}>{text}</em>;
+              if (child.underline) text = <u key={i}>{text}</u>;
+              if (child.strikethrough) text = <s key={i}>{text}</s>;
+              if (child.code)
+                text = (
+                  <code
+                    key={i}
+                    className="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm"
+                  >
+                    {text}
+                  </code>
+                );
+              return text;
+            }
+            return child.text || "";
+          });
+        };
+
+        // Fix: Type assertion for the component
+        const Tag = HeadingTag as React.ElementType;
+
+        return (
+          <Tag key={index} className={headingClass}>
+            {processChildren(node.children)}
+          </Tag>
+        );
+      case "list":
+        const ListTag = node.format === "ordered" ? "ol" : "ul";
+        const listClass =
+          node.format === "ordered"
+            ? "list-decimal pl-6 mb-4 space-y-2"
+            : "list-disc pl-6 mb-4 space-y-2";
+        return (
+          <ListTag key={index} className={listClass}>
+            {node.children?.map((child: any, i: number) =>
+              renderNode(child, i)
+            )}
+          </ListTag>
+        );
+
+      case "list-item":
+        return (
+          <li key={index} className="text-gray-700">
+            {node.children?.map((child: any, i: number) =>
+              renderNode(child, i)
+            )}
+          </li>
+        );
+
+      case "quote":
+        return (
+          <blockquote
+            key={index}
+            className="border-l-4 border-red-500 pl-4 italic text-gray-600 my-4"
+          >
+            {node.children?.map((child: any, i: number) =>
+              renderNode(child, i)
+            )}
+          </blockquote>
+        );
+
+      case "code":
+        return (
+          <pre
+            key={index}
+            className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto my-4"
+          >
+            <code>
+              {node.children?.map((child: any, i: number) =>
+                renderNode(child, i)
+              )}
+            </code>
+          </pre>
+        );
+
+      case "link":
+        return (
+          <a
+            key={index}
+            href={node.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-red-600 hover:underline"
+          >
+            {node.children?.map((child: any, i: number) =>
+              renderNode(child, i)
+            )}
+          </a>
+        );
+
+      case "image":
+        return (
+          <div key={index} className="my-6">
+            <Image
+              src={node.image.url}
+              alt={node.image.alt || ""}
+              className="rounded-xl shadow-md max-w-full h-auto"
+            />
+            {node.image.caption && (
+              <p className="text-center text-gray-500 text-sm mt-2">
+                {node.image.caption}
+              </p>
+            )}
+          </div>
+        );
+
+      default:
+        // For any unknown block types, render children with a div wrapper
+        return (
+          <div key={index} className="mb-4">
+            {node.children?.map((child: any, i: number) =>
+              renderNode(child, i)
+            )}
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {content.map((block: any, index: number) => renderNode(block, index))}
+    </div>
+  );
+};
+
 export default function ProductDetailPage() {
   const { slug } = useParams();
   // const router = useRouter();
@@ -52,16 +243,13 @@ export default function ProductDetailPage() {
     const fetchProduct = async () => {
       if (!slug) return setIsLoading(false);
       const slugStr = Array.isArray(slug) ? slug[0] : slug;
-
       try {
         // 1) Lấy toàn bộ list, tìm theo SlugURL
         const resp = await api.getLatestProducts();
         const list: StrapiProduct[] = Array.isArray(resp.data)
           ? resp.data
           : resp.data?.data || [];
-
         let found = list.find((p) => p.SlugURL === slugStr);
-
         // 2) Nếu chưa tìm, match slugify(name)
         if (!found) {
           found = list.find((p) => {
@@ -69,12 +257,10 @@ export default function ProductDetailPage() {
             return gen === slugStr;
           });
         }
-
         // 3) Nếu vẫn chưa, match mã ID
         if (!found) {
           found = list.find((p) => String(p.id) === slugStr);
         }
-
         if (found) {
           setProduct(found);
         }
@@ -84,7 +270,6 @@ export default function ProductDetailPage() {
         setIsLoading(false);
       }
     };
-
     fetchProduct();
   }, [slug]);
 
@@ -266,7 +451,6 @@ export default function ProductDetailPage() {
         )}
 
         {/* Rest of your component JSX remains the same... */}
-        {/* I'll keep the existing JSX structure */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
           <div className="flex flex-col lg:flex-row">
             {/* Left Column - Images */}
@@ -290,7 +474,6 @@ export default function ProductDetailPage() {
                     unoptimized
                   />
                 )}
-
                 {productImages.length > 1 && (
                   <>
                     <button
@@ -313,7 +496,6 @@ export default function ProductDetailPage() {
                     </button>
                   </>
                 )}
-
                 {showMagnifier && !isZoomed && (
                   <div
                     className="absolute w-40 h-40 border-4 border-white rounded-full overflow-hidden pointer-events-none shadow-xl"
@@ -333,7 +515,6 @@ export default function ProductDetailPage() {
                   />
                 )}
               </div>
-
               {/* Thumbnail Images */}
               {productImages.length > 1 && (
                 <div className="flex gap-3 overflow-x-auto pb-2">
@@ -359,7 +540,6 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
-
             {/* Right Column - Product Info */}
             <div className="lg:w-1/2 p-8 lg:border-l border-gray-100">
               {/* Product Title */}
@@ -376,7 +556,6 @@ export default function ProductDetailPage() {
                   {product.name}
                 </h1>
               </div>
-
               {/* Rating and Stats */}
               <div className="flex items-center gap-6 mb-6 pb-6 border-b border-gray-100">
                 {product.rating && (
@@ -390,7 +569,6 @@ export default function ProductDetailPage() {
                   </div>
                 )}
               </div>
-
               {/* Price Section */}
               <div className="mb-8">
                 {product.originalPrice && (
@@ -414,7 +592,6 @@ export default function ProductDetailPage() {
                 </p>
                 {/* <p className="text-gray-600">Giá đã bao gồm VAT</p> */}
               </div>
-
               {/* Product Details */}
               <div className="bg-gray-50 rounded-xl p-6 mb-8">
                 <h3 className="font-semibold text-gray-900 mb-4">
@@ -441,7 +618,6 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
               </div>
-
               {/* Quantity and Actions */}
               <div className="space-y-6">
                 {/* Quantity Selector */}
@@ -471,7 +647,6 @@ export default function ProductDetailPage() {
                     </Button>
                   </div>
                 </div>
-
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Button
@@ -501,7 +676,6 @@ export default function ProductDetailPage() {
                     <Share2 className="h-5 w-5" />
                   </Button>
                 </div>
-
                 {/* Contact Button */}
                 <Link href="/contact" className="block">
                   <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all">
@@ -510,7 +684,6 @@ export default function ProductDetailPage() {
                   </Button>
                 </Link>
               </div>
-
               {/* Service Features */}
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -549,7 +722,6 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
               </div>
-
               {/* Contact Info */}
               <div className="mt-8 pt-8 border-t border-gray-100">
                 <h3 className="font-semibold text-gray-900 mb-4">
@@ -622,7 +794,6 @@ export default function ProductDetailPage() {
             </div>
             Tài liệu & Catalog
           </h2>
-
           {documentsArray.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {documentsArray.map((doc, index) => (
@@ -739,26 +910,8 @@ export default function ProductDetailPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h2 className="text-2xl font-bold mb-6">Mô tả sản phẩm</h2>
           <div className="prose prose-lg max-w-none">
-            {product.description && product.description.length > 0 ? (
-              <div className="space-y-4">
-                {product.description.map((paragraph, index) => (
-                  <p key={index} className="text-gray-700 leading-relaxed">
-                    {paragraph.children &&
-                      paragraph.children.map((child, childIndex) => {
-                        let className = "";
-                        if (child.bold) className += "font-bold ";
-                        if (child.underline) className += "underline ";
-                        if (child.italic) className += "italic ";
-
-                        return (
-                          <span key={childIndex} className={className.trim()}>
-                            {child.text}
-                          </span>
-                        );
-                      })}
-                  </p>
-                ))}
-              </div>
+            {product.description ? (
+              <RichTextRenderer content={product.description} />
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
