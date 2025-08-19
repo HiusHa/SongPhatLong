@@ -1,7 +1,7 @@
 // app/news/[slug]/page.tsx
 "use client";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
@@ -97,20 +97,24 @@ const formatDate = (dateString?: string | null) => {
   }
 };
 
-// Helper function to get slug string from params
-function getSlugString(
-  slugParam: string | string[] | undefined
-): string | null {
-  if (!slugParam) return null;
-  if (Array.isArray(slugParam)) {
-    return slugParam[0];
+// Helper function to extract slug from pathname
+function extractSlugFromPathname(pathname: string): string | null {
+  const parts = pathname.split("/");
+  // Remove empty strings and get the last part
+  const nonEmptyParts = parts.filter((part) => part.length > 0);
+  if (
+    nonEmptyParts.length > 1 &&
+    nonEmptyParts[nonEmptyParts.length - 2] === "news"
+  ) {
+    return nonEmptyParts[nonEmptyParts.length - 1];
   }
-  return slugParam;
+  return null;
 }
 
 export default function NewsDetailPage() {
-  const params = useParams();
-  const slug = getSlugString(params.slug);
+  const pathname = usePathname();
+  const slug = extractSlugFromPathname(pathname);
+
   const [news, setNews] = useState<NewsDetailWithUpdated | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
@@ -121,12 +125,20 @@ export default function NewsDetailPage() {
   useEffect(() => {
     // Force a direct API call without dependencies
     const loadNews = async () => {
+      if (!slug) {
+        console.log("Production debug: No slug found in pathname:", pathname);
+        setError("Invalid news URL");
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
       try {
         console.log("Production debug: Starting API call");
-        console.log("Production debug: Slug parameter:", slug);
+        console.log("Production debug: Extracted slug:", slug);
+        console.log("Production debug: Pathname:", pathname);
         console.log("Production debug: Environment variables:", {
           NODE_ENV: process.env.NODE_ENV,
           API_URL_PROD: process.env.NEXT_PUBLIC_API_URL_PROD,
@@ -184,6 +196,15 @@ export default function NewsDetailPage() {
         }
 
         if (!found) {
+          console.error(
+            "Production debug: Available slugs:",
+            list.map((n) => ({
+              title: n.Title,
+              slugURL: readSlugField(n),
+              generatedSlug: toSlug(n.Title),
+              documentId: n.documentId,
+            }))
+          );
           setError("Article not found");
           return;
         }
@@ -224,7 +245,7 @@ export default function NewsDetailPage() {
     };
 
     loadNews();
-  }, [slug]); // Only depend on slug
+  }, [pathname, slug]); // Depend on pathname and extracted slug
 
   if (isLoading) {
     return (
@@ -250,7 +271,8 @@ export default function NewsDetailPage() {
               <p>
                 <strong>Debug Info:</strong>
               </p>
-              <p>Slug: {debugInfo.slug || slug}</p>
+              <p>Pathname: {pathname}</p>
+              <p>Extracted slug: {slug}</p>
               <p>Response Status: {debugInfo.responseStatus || "N/A"}</p>
               <p>Data Received: {debugInfo.dataReceived ? "Yes" : "No"}</p>
               <p>Article Count: {debugInfo.articleCount || 0}</p>
@@ -293,7 +315,8 @@ export default function NewsDetailPage() {
               <p>
                 <strong>Debug Info:</strong>
               </p>
-              <p>Slug: {debugInfo.slug || slug}</p>
+              <p>Pathname: {pathname}</p>
+              <p>Extracted slug: {slug}</p>
               <p>Response Status: {debugInfo.responseStatus || "N/A"}</p>
               <p>Data Received: {debugInfo.dataReceived ? "Yes" : "No"}</p>
               <p>Article Count: {debugInfo.articleCount || 0}</p>
