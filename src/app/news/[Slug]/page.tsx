@@ -9,15 +9,6 @@ import { Loader } from "@/components/loader";
 import { type NewsDetail, type StrapiNewsItem } from "@/app/lib/news";
 import { toSlug } from "@/app/lib/slug";
 
-// Define a type for debug info
-interface DebugInfo {
-  slug?: string | null;
-  responseStatus?: number;
-  dataReceived?: boolean;
-  articleCount?: number;
-  error?: string;
-}
-
 // Link renderer
 function LinkRenderer(
   props: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string }
@@ -119,14 +110,12 @@ export default function NewsDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<DebugInfo>({});
   const isDev = process.env.NODE_ENV === "development";
 
   useEffect(() => {
-    // Force a direct API call without dependencies
     const loadNews = async () => {
       if (!slug) {
-        console.log("Production debug: No slug found in pathname:", pathname);
+        console.log("No slug found in pathname:", pathname);
         setError("Invalid news URL");
         setIsLoading(false);
         return;
@@ -136,15 +125,6 @@ export default function NewsDetailPage() {
       setError(null);
 
       try {
-        console.log("Production debug: Starting API call");
-        console.log("Production debug: Extracted slug:", slug);
-        console.log("Production debug: Pathname:", pathname);
-        console.log("Production debug: Environment variables:", {
-          NODE_ENV: process.env.NODE_ENV,
-          API_URL_PROD: process.env.NEXT_PUBLIC_API_URL_PROD,
-          API_URL_DEV: process.env.NEXT_PUBLIC_API_URL_DEV,
-        });
-
         // Make a direct API call
         const response = await fetch(
           `${
@@ -153,24 +133,12 @@ export default function NewsDetailPage() {
             "https://songphatlong-admin.onrender.com"
           }/api/news?populate=*`
         );
-        console.log(
-          "Production debug: Fetch response status:",
-          response.status
-        );
 
         if (!response.ok) {
           throw new Error(`API request failed with status ${response.status}`);
         }
 
         const data = await response.json();
-        console.log("Production debug: API data received:", data);
-
-        setDebugInfo({
-          slug,
-          responseStatus: response.status,
-          dataReceived: !!data,
-          articleCount: data?.data?.length || 0,
-        });
 
         const list: StrapiNewsItem[] = Array.isArray(data?.data)
           ? data.data
@@ -196,15 +164,6 @@ export default function NewsDetailPage() {
         }
 
         if (!found) {
-          console.error(
-            "Production debug: Available slugs:",
-            list.map((n) => ({
-              title: n.Title,
-              slugURL: readSlugField(n),
-              generatedSlug: toSlug(n.Title),
-              documentId: n.documentId,
-            }))
-          );
           setError("Article not found");
           return;
         }
@@ -231,21 +190,17 @@ export default function NewsDetailPage() {
 
         setNews(detail);
       } catch (err) {
-        console.error("Production debug: Error loading news:", err);
+        console.error("Error loading news:", err);
         const errorMessage =
           err instanceof Error ? err.message : "Failed to load news";
         setError(errorMessage);
-        setDebugInfo((prev: DebugInfo) => ({
-          ...prev,
-          error: errorMessage,
-        }));
       } finally {
         setIsLoading(false);
       }
     };
 
     loadNews();
-  }, [pathname, slug]); // Depend on pathname and extracted slug
+  }, [pathname, slug]);
 
   if (isLoading) {
     return (
@@ -265,25 +220,15 @@ export default function NewsDetailPage() {
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
           <p className="text-gray-600 mb-6">{error}</p>
 
-          {/* Show debug info in production */}
-          {!isDev && (
+          {/* Only show debug info in development */}
+          {isDev && (
             <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded text-left text-sm">
               <p>
                 <strong>Debug Info:</strong>
               </p>
               <p>Pathname: {pathname}</p>
               <p>Extracted slug: {slug}</p>
-              <p>Response Status: {debugInfo.responseStatus || "N/A"}</p>
-              <p>Data Received: {debugInfo.dataReceived ? "Yes" : "No"}</p>
-              <p>Article Count: {debugInfo.articleCount || 0}</p>
-              <p>Error: {debugInfo.error || "None"}</p>
               <p>Environment: {process.env.NODE_ENV}</p>
-              <p>
-                API URL:{" "}
-                {process.env.NEXT_PUBLIC_API_URL_PROD ||
-                  process.env.NEXT_PUBLIC_API_URL_DEV ||
-                  "Not set"}
-              </p>
             </div>
           )}
 
@@ -309,24 +254,15 @@ export default function NewsDetailPage() {
             The requested news article could not be found.
           </p>
 
-          {/* Show debug info in production */}
-          {!isDev && (
+          {/* Only show debug info in development */}
+          {isDev && (
             <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded text-left text-sm">
               <p>
                 <strong>Debug Info:</strong>
               </p>
               <p>Pathname: {pathname}</p>
               <p>Extracted slug: {slug}</p>
-              <p>Response Status: {debugInfo.responseStatus || "N/A"}</p>
-              <p>Data Received: {debugInfo.dataReceived ? "Yes" : "No"}</p>
-              <p>Article Count: {debugInfo.articleCount || 0}</p>
               <p>Environment: {process.env.NODE_ENV}</p>
-              <p>
-                API URL:{" "}
-                {process.env.NEXT_PUBLIC_API_URL_PROD ||
-                  process.env.NEXT_PUBLIC_API_URL_DEV ||
-                  "Not set"}
-              </p>
             </div>
           )}
 
@@ -350,14 +286,6 @@ export default function NewsDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Debug info for production */}
-      {!isDev && (
-        <div className="bg-yellow-100 text-yellow-800 p-2 text-sm">
-          Production Debug: isLoading={isLoading.toString()}, hasNews={!!news},
-          error={error || "none"}, slug={slug}
-        </div>
-      )}
-
       <div className="container mx-auto px-4 py-8 md:py-12">
         <Link
           href="/news"
