@@ -1,19 +1,22 @@
 // app/news/[slug]/page.tsx
 "use client";
-import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import { Loader } from "@/components/loader";
-import {
-  type NewsDetail,
-  type StrapiListResponse,
-  type StrapiNewsItem,
-} from "@/app/lib/news";
+import { type NewsDetail, type StrapiNewsItem } from "@/app/lib/news";
 import { toSlug } from "@/app/lib/slug";
-import api from "@/app/_utils/globalApi";
-import type { AxiosResponse } from "axios";
+
+// Define a type for debug info
+interface DebugInfo {
+  slug?: string | null;
+  responseStatus?: number;
+  dataReceived?: boolean;
+  articleCount?: number;
+  error?: string;
+}
 
 // Link renderer
 function LinkRenderer(
@@ -40,7 +43,7 @@ function LinkRenderer(
 // Extended type with updatedAt
 type NewsDetailWithUpdated = NewsDetail & {
   updatedAt?: string | null;
-  imageUrl: string; // Ensure imageUrl is always a string
+  imageUrl: string;
 };
 
 // Helper function to safely read slug field
@@ -55,25 +58,19 @@ function readSlugField(n: StrapiNewsItem): string | null {
 function extractImageUrl(imageData: any): string | null {
   if (!imageData) return null;
 
-  // Handle different possible image data structures
-  // Direct URL property
   if (imageData.url && typeof imageData.url === "string") {
     return imageData.url;
   }
 
-  // Nested structure with attributes
   if (imageData.data?.attributes?.url) {
     return imageData.data.attributes.url;
   }
 
-  // Nested structure without attributes
   if (imageData.data?.url) {
     return imageData.data.url;
   }
 
-  // Format-specific URLs
   if (imageData.formats) {
-    // Try to get the largest available format
     const formats = ["large", "medium", "small", "thumbnail"];
     for (const format of formats) {
       if (imageData.formats[format]?.url) {
@@ -106,173 +103,92 @@ function getSlugString(
 ): string | null {
   if (!slugParam) return null;
   if (Array.isArray(slugParam)) {
-    return slugParam[0]; // Take the first segment if it's an array
+    return slugParam[0];
   }
   return slugParam;
 }
 
 export default function NewsDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const slug = getSlugString(params.slug);
   const [news, setNews] = useState<NewsDetailWithUpdated | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [apiResponse, setApiResponse] = useState<any>(null);
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({});
   const isDev = process.env.NODE_ENV === "development";
-  const dataFetched = useRef(false);
 
   useEffect(() => {
-    // Cleanup function to prevent state updates if component unmounts
-    return () => {
-      setIsMounted(false);
-    };
-  }, []);
-
-  useEffect(() => {
-    // Prevent duplicate data fetching in development mode
-    if (dataFetched.current) return;
-
-    const fetchData = async () => {
-      if (!slug || !isMounted) {
-        setIsLoading(false);
-        return;
-      }
+    // Force a direct API call without dependencies
+    const loadNews = async () => {
+      setIsLoading(true);
+      setError(null);
 
       try {
-        console.log("Production debug: Starting fetch with slug:", slug);
+        console.log("Production debug: Starting API call");
+        console.log("Production debug: Slug parameter:", slug);
         console.log("Production debug: Environment variables:", {
           NODE_ENV: process.env.NODE_ENV,
           API_URL_PROD: process.env.NEXT_PUBLIC_API_URL_PROD,
           API_URL_DEV: process.env.NEXT_PUBLIC_API_URL_DEV,
         });
 
-        const resp = await api.getNews();
-        console.log("Production debug: API response received:", resp);
-
-        // Store the raw API response for debugging
-        setApiResponse(resp);
-
-        // Check if response has the expected structure
-        if (!resp || !resp.data) {
-          console.error("Production debug: Invalid API response structure");
-          setApiError("Invalid API response structure");
-          setError("Failed to load news article");
-          return;
-        }
-
-        const typed = resp as AxiosResponse<StrapiListResponse<StrapiNewsItem>>;
-        const list: StrapiNewsItem[] = Array.isArray(typed.data?.data)
-          ? typed.data.data
-          : [];
-
+        // Make a direct API call
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL_PROD ||
+            process.env.NEXT_PUBLIC_API_URL_DEV ||
+            "https://songphatlong-admin.onrender.com"
+          }/api/news?populate=*`
+        );
         console.log(
-          "Production debug: Number of articles in response:",
-          list.length
+          "Production debug: Fetch response status:",
+          response.status
         );
 
-        // If no articles found, set error and return
-        if (list.length === 0) {
-          console.error("Production debug: No articles found in API response");
-          setApiError("No articles found in API response");
-          setError("No articles available");
-          return;
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
         }
 
-        // Debug: Log all available slugs in production
-        if (!isDev) {
-          console.log(
-            "Production debug: Available slugs:",
-            list.map((item) => ({
-              id: item.id,
-              title: item.Title,
-              slugURL: readSlugField(item),
-              generatedSlug: toSlug(item.Title),
-              documentId: item.documentId,
-            }))
-          );
-          console.log("Production debug: Looking for slug:", slug);
-        }
+        const data = await response.json();
+        console.log("Production debug: API data received:", data);
 
-        // 1) Try custom SlugURL (trimmed)
-        let found = list.find((n) => {
-          const customSlug = readSlugField(n);
-          const match = customSlug === slug;
-          console.log(
-            `Production debug: Comparing customSlug "${customSlug}" with slug "${slug}": ${match}`
-          );
-          return match;
+        setDebugInfo({
+          slug,
+          responseStatus: response.status,
+          dataReceived: !!data,
+          articleCount: data?.data?.length || 0,
         });
 
-        // 2) Try with trimming both sides (for cases with trailing spaces)
-        if (!found) {
-          found = list.find((n) => {
-            const customSlug = readSlugField(n);
-            const match = customSlug?.trim() === slug?.trim();
-            console.log(
-              `Production debug: Comparing trimmed customSlug "${customSlug?.trim()}" with trimmed slug "${slug?.trim()}": ${match}`
-            );
-            return match;
-          });
-        }
+        const list: StrapiNewsItem[] = Array.isArray(data?.data)
+          ? data.data
+          : [];
 
-        // 3) Fallback to generated slug from title
-        if (!found) {
-          found = list.find((n) => {
-            const generatedSlug = toSlug(n.Title);
-            const match = generatedSlug === slug;
-            console.log(
-              `Production debug: Comparing generatedSlug "${generatedSlug}" with slug "${slug}": ${match}`
-            );
-            return match;
-          });
-        }
-
-        // 4) Try with trimming both sides for generated slug
-        if (!found) {
-          found = list.find((n) => {
-            const generatedSlug = toSlug(n.Title);
-            const match = generatedSlug.trim() === slug?.trim();
-            console.log(
-              `Production debug: Comparing trimmed generatedSlug "${generatedSlug.trim()}" with trimmed slug "${slug?.trim()}": ${match}`
-            );
-            return match;
-          });
-        }
-
-        // 5) Fallback to documentId or id
-        if (!found) {
-          found = list.find((n) => {
-            const match = String(n.documentId ?? n.id) === slug;
-            console.log(
-              `Production debug: Comparing documentId "${String(
-                n.documentId ?? n.id
-              )}" with slug "${slug}": ${match}`
-            );
-            return match;
-          });
-        }
-
-        if (!found) {
-          console.error("Production debug: News not found for slug:", slug);
-          setError("News article not found");
-          if (isMounted) {
-            // Don't redirect immediately in production for debugging
-            if (isDev) {
-              router.replace("/news");
-            }
-          }
+        if (list.length === 0) {
+          setError("No articles found");
           return;
         }
 
-        console.log("Production debug: Found article:", found.Title);
+        // Try to find the article by slug
+        let found = list.find((n) => {
+          const customSlug = readSlugField(n);
+          return customSlug === slug;
+        });
 
-        // Extract image URL with improved function
+        if (!found) {
+          found = list.find((n) => toSlug(n.Title) === slug);
+        }
+
+        if (!found) {
+          found = list.find((n) => String(n.documentId ?? n.id) === slug);
+        }
+
+        if (!found) {
+          setError("Article not found");
+          return;
+        }
+
         const imageUrl = extractImageUrl(found.Image);
-        console.log("Production debug: Extracted image URL:", imageUrl);
 
         const detail: NewsDetailWithUpdated = {
           id: found.id,
@@ -292,45 +208,23 @@ export default function NewsDetailPage() {
             (found as { updatedAt?: string | null }).updatedAt ?? undefined,
         };
 
-        if (isMounted) {
-          setNews(detail);
-          dataFetched.current = true;
-        }
+        setNews(detail);
       } catch (err) {
-        console.error("Production debug: Fetch news error:", err);
-        setApiError(err instanceof Error ? err.message : "Unknown error");
-        setError("Failed to load news article");
-        if (isMounted) {
-          // Don't redirect immediately in production for debugging
-          if (isDev) {
-            router.replace("/news");
-          }
-        }
+        console.error("Production debug: Error loading news:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to load news";
+        setError(errorMessage);
+        setDebugInfo((prev: DebugInfo) => ({
+          ...prev,
+          error: errorMessage,
+        }));
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
-    fetchData();
-  }, [slug, router, isDev, isMounted]);
-
-  // Add debug information in production
-  useEffect(() => {
-    if (!isDev && !isLoading && !news) {
-      console.log(
-        "Production debug: Final state - isLoading=",
-        isLoading,
-        "news=",
-        news,
-        "error=",
-        error
-      );
-      console.log("Production debug: API response:", apiResponse);
-      console.log("Production debug: API error:", apiError);
-    }
-  }, [isLoading, news, error, isDev, apiResponse, apiError]);
+    loadNews();
+  }, [slug]); // Only depend on slug
 
   if (isLoading) {
     return (
@@ -350,16 +244,17 @@ export default function NewsDetailPage() {
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
           <p className="text-gray-600 mb-6">{error}</p>
 
-          {/* Show more detailed debug info in production */}
+          {/* Show debug info in production */}
           {!isDev && (
             <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded text-left text-sm">
               <p>
                 <strong>Debug Info:</strong>
               </p>
-              <p>Slug: {slug}</p>
-              <p>API Response: {apiResponse ? "Received" : "None"}</p>
-              <p>API Error: {apiError || "None"}</p>
-              <p>Articles count: {apiResponse?.data?.data?.length || 0}</p>
+              <p>Slug: {debugInfo.slug || slug}</p>
+              <p>Response Status: {debugInfo.responseStatus || "N/A"}</p>
+              <p>Data Received: {debugInfo.dataReceived ? "Yes" : "No"}</p>
+              <p>Article Count: {debugInfo.articleCount || 0}</p>
+              <p>Error: {debugInfo.error || "None"}</p>
               <p>Environment: {process.env.NODE_ENV}</p>
               <p>
                 API URL:{" "}
@@ -392,16 +287,16 @@ export default function NewsDetailPage() {
             The requested news article could not be found.
           </p>
 
-          {/* Show more detailed debug info in production */}
+          {/* Show debug info in production */}
           {!isDev && (
             <div className="mt-4 p-4 bg-yellow-100 text-yellow-800 rounded text-left text-sm">
               <p>
                 <strong>Debug Info:</strong>
               </p>
-              <p>Slug: {slug}</p>
-              <p>API Response: {apiResponse ? "Received" : "None"}</p>
-              <p>API Error: {apiError || "None"}</p>
-              <p>Articles count: {apiResponse?.data?.data?.length || 0}</p>
+              <p>Slug: {debugInfo.slug || slug}</p>
+              <p>Response Status: {debugInfo.responseStatus || "N/A"}</p>
+              <p>Data Received: {debugInfo.dataReceived ? "Yes" : "No"}</p>
+              <p>Article Count: {debugInfo.articleCount || 0}</p>
               <p>Environment: {process.env.NODE_ENV}</p>
               <p>
                 API URL:{" "}
