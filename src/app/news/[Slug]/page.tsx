@@ -1,5 +1,7 @@
 // app/news/[slug]/page.tsx
 "use client";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -163,6 +165,20 @@ export default function NewsDetailPage() {
   const [imageError, setImageError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isDev = process.env.NODE_ENV === "development";
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const el = document.documentElement;
+      const total = el.scrollHeight - el.clientHeight;
+      const p = total > 0 ? (el.scrollTop / total) * 100 : 0;
+      setScrollProgress(p);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const loadNews = async () => {
@@ -335,78 +351,245 @@ export default function NewsDetailPage() {
     : news.imageUrl || "/placeholder.svg";
 
   const imgAlt = news.title;
+  // NEW: reading progress + copy link state
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 md:py-12">
-        <Link
-          href="/news"
-          className="text-red-600 hover:underline mb-6 inline-block"
-        >
-          ← Quay lại tin tức
-        </Link>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      {/* Top progress bar */}
+      <div
+        className="fixed top-0 left-0 h-1 bg-red-600 z-40 transition-all duration-150"
+        style={{ width: `${scrollProgress}%` }}
+        aria-hidden
+      />
 
-        <article className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <header className="bg-red-600 text-white px-6 md:px-8 py-8 md:py-12">
-            <h1 className="text-2xl md:text-4xl font-bold mb-4">
-              {news.title}
-            </h1>
-            <div className="flex flex-wrap gap-4 text-red-100">
-              <time>{formatDate(news.dateISO)}</time>
-              <span>{news.author ?? "-"}</span>
-            </div>
-          </header>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+        {/* Breadcrumbs */}
+        <nav className="mb-6 md:mb-8 text-sm text-gray-500">
+          <Link href="/" className="hover:text-gray-700">
+            Trang chủ
+          </Link>
+          <span className="px-2">/</span>
+          <Link href="/news" className="hover:text-gray-700">
+            Tin tức
+          </Link>
+          <span className="px-2">/</span>
+          <span className="text-gray-800 line-clamp-1">{news.title}</span>
+        </nav>
 
-          {/* Image container with fallback */}
-          <div className="relative w-full h-full md:h-96 bg-gray-200">
-            <Image
-              src={imgSrc}
-              alt={imgAlt}
-              fill
-              sizes="(max-width: 768px) 100vw, 1000px"
-              style={{ objectFit: "contain" }}
-              onError={() => setImageError(true)}
-              unoptimized={true}
-              priority
-            />
-            {imageError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
-                <div className="text-gray-500">Image not available</div>
+        {/* Article card */}
+        <article className="relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+          {/* Cover */}
+          <div className="relative">
+            <div className="relative w-full h-[42vw] max-h-[420px] bg-gray-100">
+              <Image
+                src={imgSrc}
+                alt={imgAlt}
+                fill
+                sizes="100vw"
+                style={{ objectFit: "cover" }}
+                onError={() => setImageError(true)}
+                unoptimized
+                priority
+              />
+              {/* subtle overlay gradient for readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+              {/* Title over image on larger screens */}
+              <div className="hidden md:block absolute bottom-0 left-0 right-0 p-6 sm:p-8">
+                <h1 className="text-white text-2xl sm:text-3xl lg:text-4xl font-extrabold drop-shadow">
+                  {news.title}
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-red-100/90">
+                  <time className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">
+                    {formatDate(news.dateISO)}
+                  </time>
+                  <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-sm backdrop-blur">
+                    {news.author ?? "Song Phát Long"}
+                  </span>
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Title for small screens */}
+            <div className="md:hidden px-4 sm:px-6 pt-5">
+              <h1 className="text-2xl font-bold text-gray-900">{news.title}</h1>
+              <div className="mt-2 flex flex-wrap gap-3 text-sm text-gray-500">
+                <time>{formatDate(news.dateISO)}</time>
+                <span>•</span>
+                <span>{news.author ?? "Song Phát Long"}</span>
+              </div>
+            </div>
           </div>
 
-          <div className="p-4 md:p-8 space-y-8">
-            {news.sections.map((sec) => (
-              <section key={sec.id} id={`sec-${sec.id}`} className="mb-8">
-                {sec.title && (
-                  <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">
-                    {sec.title}
-                  </h2>
-                )}
-                <div className="bg-gray-100 p-4 md:p-6 rounded-lg">
-                  <div className="text-gray-700 leading-relaxed prose prose-lg max-w-none">
-                    <ReactMarkdown
-                      components={{ a: (props) => <LinkRenderer {...props} /> }}
-                    >
-                      {sec.content ?? ""}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              </section>
-            ))}
-
-            <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <span className="text-gray-500">
-                Cập nhật: {formatDate(news.updatedAt)}
-              </span>
+          {/* Actions bar */}
+          <div className="px-4 sm:px-6 lg:px-8 py-4 border-b border-gray-100 bg-white/60 backdrop-blur">
+            <div className="flex flex-wrap items-center gap-3 justify-between">
               <Link
                 href="/news"
-                className="text-red-600 hover:underline inline-block"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                ← Xem thêm tin tức
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  className="opacity-70"
+                >
+                  <path fill="currentColor" d="M10 19l-7-7l7-7v4h8v6h-8v4z" />
+                </svg>
+                Quay lại
               </Link>
+
+              <div className="ml-auto flex items-center gap-2">
+                {/* Share to FB (simple link) */}
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                    typeof window !== "undefined" ? window.location.href : ""
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    className="opacity-70"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M22 12a10 10 0 1 0-11.5 9.9v-7h-2v-3h2v-2.3C10.5 7.7 12 6 14.7 6c1.1 0 2.2.2 2.2.2v2.4h-1.3c-1.3 0-1.7.8-1.7 1.6V12h2.9l-.5 3h-2.4v7A10 10 0 0 0 22 12"
+                    />
+                  </svg>
+                  Chia sẻ
+                </a>
+
+                {/* Copy link */}
+                <button
+                  onClick={handleCopyLink}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    className="opacity-70"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12zM20 5H8a2 2 0 0 0-2 2v14h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m0 16H8V7h12z"
+                    />
+                  </svg>
+                  {copied ? "Đã copy!" : "Copy link"}
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Main content */}
+            <div className="lg:col-span-8">
+              {news.sections.map((sec) => (
+                <section key={sec.id} id={`sec-${sec.id}`} className="mb-10">
+                  {sec.title && (
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <span className="h-5 w-1.5 rounded-full bg-red-600" />
+                      {sec.title}
+                    </h2>
+                  )}
+
+                  {/* Markdown with preserved line breaks */}
+                  <div className="bg-gray-50/70 hover:bg-gray-50 transition-colors border border-gray-100 rounded-xl p-4 sm:p-6">
+                    <div className="prose prose-lg max-w-none text-gray-800 whitespace-pre-wrap">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkBreaks]}
+                        components={{
+                          // Paragraphs become <div>, so block children (like your embed <div>) are valid
+                          p: ({ ...props }) => (
+                            <div {...props} className="mb-4 leading-relaxed" />
+                          ),
+                          // Keep your custom link renderer
+                          a: (props) => <LinkRenderer {...props} />,
+                        }}
+                      >
+                        {(sec.content ?? "").replace(/\r\n/g, "\n")}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                </section>
+              ))}
+
+              {/* Footer meta */}
+              <div className="mt-10 pt-6 border-t border-gray-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <span className="text-sm text-gray-500">
+                  Cập nhật: {formatDate(news.updatedAt)}
+                </span>
+                <Link
+                  href="/news"
+                  className="inline-flex items-center gap-2 text-red-600 hover:text-red-700"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M10 19l-7-7l7-7v4h8v6h-8z" />
+                  </svg>
+                  Xem thêm tin tức
+                </Link>
+              </div>
+            </div>
+
+            {/* Sidebar */}
+            <aside className="lg:col-span-4 space-y-6">
+              {/* Quick contact / CTA */}
+              <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+                  <span className="h-5 w-1.5 rounded-full bg-red-600" />
+                  Liên hệ tư vấn & báo giá
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Dây chống cháy đạt chuẩn IEC 60331, BS 6387, EN 50200.
+                </p>
+
+                <div className="space-y-2 text-sm">
+                  <a
+                    href="tel:0904858385"
+                    className="block rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50"
+                  >
+                    📲 Hotline/Zalo: 0904.85.83.85
+                  </a>
+                  <a
+                    href="tel:0905799385"
+                    className="block rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50"
+                  >
+                    📲 Hotline/Zalo: 0905.799.385
+                  </a>
+                  <a
+                    href="mailto:songphatlong@gmail.com"
+                    className="block rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50"
+                  >
+                    📧 songphatlong@gmail.com
+                  </a>
+                </div>
+
+                <Link
+                  href="/contact"
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-red-600 px-4 py-2.5 text-white font-medium hover:bg-red-700"
+                >
+                  Nhận tư vấn miễn phí
+                </Link>
+              </div>
+
+              {/* Facebook preview note */}
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-5 text-sm text-gray-600">
+                🔗 Link Facebook trong nội dung sẽ tự nhúng bên dưới đoạn văn
+                bản tương ứng.
+              </div>
+            </aside>
           </div>
         </article>
       </div>
