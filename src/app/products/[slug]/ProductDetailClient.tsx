@@ -1,8 +1,7 @@
-// app/products/[slug]/ProductDetailClient.tsx
 "use client";
-import { JSX } from "react";
+
 import type React from "react";
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -29,69 +28,58 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "react-hot-toast";
-import { addToCart } from "../../../../utils/cartUtils";
+import type { StrapiProduct, ProductImage } from "@/app/types/product";
 import { getProductUrl } from "../../../../utils/slugtify";
+import { addToCart } from "../../../../utils/cartUtils";
 
-// ---- Minimal types UI cần ----
-export type ProductImage = {
-  url?: string;
-  name?: string;
-  width?: number;
-  height?: number;
-  alternativeText?: string | null;
-  caption?: string | null;
-  size?: number;
-  mime?: string;
-};
+/* =========================
+   Helpers
+   ========================= */
+const toCurrency = (n?: number | null) =>
+  typeof n === "number" && !Number.isNaN(n)
+    ? n.toLocaleString("vi-VN") + "₫"
+    : "Liên hệ";
 
-type MediaFile = {
-  url: string;
-  name?: string;
-  size?: number;
-  mime?: string;
-};
+// seed random ổn định theo chuỗi (name/slug/id) → giá trị 0..1
+function seededRandom01(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h << 5) - h + seed.charCodeAt(i);
+    h |= 0;
+  }
+  const v = Math.abs(h % 1000) / 1000; // 0..0.999
+  return v;
+}
 
-export type ClientProduct = {
-  id?: string | number;
-  documentId?: string;
-  name: string;
-  SlugURL?: string | null;
+/** Tạo fake original = pricing * (1.10..1.20) theo seed (ổn định) */
+function getFakeOriginalPrice(price?: number | null, seedKey = "seed") {
+  if (!price || price <= 0) return null;
+  const r = seededRandom01(seedKey); // 0..1
+  const pct = 0.1 + r * 0.1; // 0.10 → 0.20
+  return Math.round(price * (1 + pct));
+}
 
-  pricing?: number; // đã ép số ở server
-  originalPrice?: number; // đã ép số ở server
-  rating?: number; // đã ép số ở server
+/** Kết hợp: nếu đã có originalPrice từ CMS và > pricing → dùng luôn,
+ *  nếu không thì sinh fake original theo seed.
+ */
+function computeOriginal(
+  pricing?: number | null,
+  originalFromCMS?: number | null,
+  seedKey = "seed"
+) {
+  if (
+    typeof originalFromCMS === "number" &&
+    typeof pricing === "number" &&
+    originalFromCMS > pricing
+  ) {
+    return originalFromCMS;
+  }
+  return getFakeOriginalPrice(pricing, seedKey);
+}
 
-  image?: ProductImage | null;
-  image2?: ProductImage | ProductImage[] | null;
-  image3?: ProductImage | ProductImage[] | null;
-  image4?: ProductImage | ProductImage[] | null;
-  image5?: ProductImage | ProductImage[] | null;
-
-  productVideo?: MediaFile | MediaFile[] | null;
-  documents?: MediaFile | MediaFile[] | null;
-
-  categories?: { name?: string | null }[] | null;
-  brand?: string | null;
-  origin?: string | null;
-  bought?: number | null;
-
-  description?: any;
-};
-
-// ---- Helpers ----
-
-const toCurrency = (v: number) => `${v.toLocaleString("vi-VN")}₫`;
-const fileSize = (bytes?: number) => {
-  if (!bytes || bytes <= 0) return "—";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-};
-const asArray = <T,>(x: T | T[] | null | undefined): T[] =>
-  Array.isArray(x) ? x.filter(Boolean) : x ? [x] : [];
-
-// ---- Rich Text renderer (giữ nguyên) ----
+/* =========================
+   Rich Text Renderer (như cũ)
+   ========================= */
 const RichTextRenderer = ({ content }: { content: any }) => {
   if (!content || !Array.isArray(content)) return null;
 
@@ -128,58 +116,36 @@ const RichTextRenderer = ({ content }: { content: any }) => {
         );
 
       case "heading": {
-        const HeadingTag = `h${node.level || 1}` as keyof JSX.IntrinsicElements;
-        const headingClass =
-          node.level === 1
+        const lvl = node.level || 1;
+        const Tag = `h${lvl}` as unknown as React.ElementType;
+        const cls =
+          lvl === 1
             ? "text-3xl font-bold mb-4 mt-6"
-            : node.level === 2
+            : lvl === 2
             ? "text-2xl font-bold mb-3 mt-5"
-            : node.level === 3
+            : lvl === 3
             ? "text-xl font-bold mb-2 mt-4"
-            : node.level === 4
+            : lvl === 4
             ? "text-lg font-bold mb-2 mt-3"
             : "text-md font-bold mb-2 mt-3";
-
-        const children = (node.children || []).map((child: any, i: number) => {
-          if (child.type === "text") {
-            let text: React.ReactNode = child.text || "";
-            if (child.bold) text = <strong key={i}>{text}</strong>;
-            if (child.italic) text = <em key={i}>{text}</em>;
-            if (child.underline) text = <u key={i}>{text}</u>;
-            if (child.strikethrough) text = <s key={i}>{text}</s>;
-            if (child.code) {
-              text = (
-                <code
-                  key={i}
-                  className="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm"
-                >
-                  {text}
-                </code>
-              );
-            }
-            return text;
-          }
-          return child?.text || "";
-        });
-
-        const Tag = HeadingTag as React.ElementType;
+        const children = (node.children || []).map((child: any) =>
+          child?.type === "text" ? child.text || "" : ""
+        );
         return (
-          <Tag key={index} className={headingClass}>
+          <Tag key={index} className={cls}>
             {children}
           </Tag>
         );
       }
 
       case "list": {
-        const ListTag = (node.format === "ordered" ? "ol" : "ul") as
-          | "ol"
-          | "ul";
-        const listClass =
-          node.format === "ordered"
-            ? "list-decimal pl-6 mb-4 space-y-2"
-            : "list-disc pl-6 mb-4 space-y-2";
+        const ordered = node.format === "ordered";
+        const ListTag = (ordered ? "ol" : "ul") as "ol" | "ul";
+        const cls = ordered
+          ? "list-decimal pl-6 mb-4 space-y-2"
+          : "list-disc pl-6 mb-4 space-y-2";
         return (
-          <ListTag key={index} className={listClass}>
+          <ListTag key={index} className={cls}>
             {node.children?.map((child: any, i: number) =>
               renderNode(child, i)
             )}
@@ -241,14 +207,13 @@ const RichTextRenderer = ({ content }: { content: any }) => {
         return (
           <div key={index} className="my-6">
             <Image
-              src={node.image?.url || "/placeholder.svg"}
-              alt={node.image?.alt || ""}
+              src={node.image.url}
+              alt={node.image.alt || ""}
               width={1200}
               height={800}
               className="rounded-xl shadow-md w-full h-auto"
-              unoptimized
             />
-            {node.image?.caption && (
+            {node.image.caption && (
               <p className="text-center text-gray-500 text-sm mt-2">
                 {node.image.caption}
               </p>
@@ -270,50 +235,58 @@ const RichTextRenderer = ({ content }: { content: any }) => {
   return <div className="space-y-4">{content.map(renderNode)}</div>;
 };
 
-// ---- Main component ----
+/* =========================
+   Product Detail (Client)
+   ========================= */
 export default function ProductDetailClient({
   product,
 }: {
-  product: ClientProduct;
+  product: StrapiProduct;
 }) {
-  // Derived values
-  const price = product.pricing;
-  const original = product.originalPrice;
-  const rating = product.rating;
+  // Images
+  const collectImages = (p: StrapiProduct): ProductImage[] => {
+    const out: ProductImage[] = [];
+    if (p.image) out.push(p.image);
+    [p.image2, p.image3, p.image4, p.image5].forEach((imgField) => {
+      if (Array.isArray(imgField)) out.push(...imgField.filter(Boolean));
+      else if (imgField) out.push(imgField as ProductImage);
+    });
+    return out;
+  };
+  const images = collectImages(product);
+  const productVideo = Array.isArray(product.productVideo)
+    ? product.productVideo[0]
+    : product.productVideo;
+  const documents = product.documents
+    ? Array.isArray(product.documents)
+      ? product.documents
+      : [product.documents]
+    : [];
+
+  // Rating/price (đảm bảo number)
+  const rating = typeof product.rating === "number" ? product.rating : 0;
+  const price =
+    typeof product.pricing === "number" ? product.pricing : undefined;
+
+  // ✅ GIÁ GỐC (có thể là fake, ổn định theo seed)
+  const seedKey =
+    product.documentId ||
+    product.SlugURL ||
+    product.name ||
+    String(product.id || "");
+  const original =
+    typeof product.originalPrice === "number"
+      ? computeOriginal(price, product.originalPrice, seedKey)
+      : computeOriginal(price, null, seedKey);
+
   const discountPct =
-    typeof price === "number" &&
     typeof original === "number" &&
+    typeof price === "number" &&
     original > price
       ? Math.round(((original - price) / original) * 100)
       : null;
 
-  const images: ProductImage[] = useMemo(() => {
-    const out: ProductImage[] = [];
-    const push = (x: any) => {
-      if (!x) return;
-      if (Array.isArray(x)) x.forEach(push);
-      else if (x.url) out.push({ ...x, url: x.url });
-    };
-    push(product.image);
-    push(product.image2);
-    push(product.image3);
-    push(product.image4);
-    push(product.image5);
-    return out.length
-      ? out
-      : [{ url: "/placeholder.svg", name: "placeholder" }];
-  }, [product]);
-
-  const productVideo = useMemo(
-    () => asArray<MediaFile>(product.productVideo)[0],
-    [product]
-  );
-  const documents = useMemo(
-    () => asArray<MediaFile>(product.documents),
-    [product]
-  );
-
-  // States
+  // UI States
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
@@ -325,6 +298,7 @@ export default function ProductDetailClient({
   // Handlers
   const navImage = useCallback(
     (dir: "next" | "prev") => {
+      if (!images.length) return;
       setCurrentImageIndex((prev) =>
         dir === "next"
           ? (prev + 1) % images.length
@@ -343,30 +317,31 @@ export default function ProductDetailClient({
     setZoomPosition({ x, y });
   }, []);
 
-  const renderStars = (r?: number) => {
-    if (typeof r !== "number") return null;
-    return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((s) =>
-          r >= s ? (
-            <Star key={s} className="h-5 w-5 text-yellow-400" />
-          ) : r > s - 1 ? (
-            <StarHalf key={s} className="h-5 w-5 text-yellow-400" />
-          ) : (
-            <Star key={s} className="h-5 w-5 text-gray-300" />
-          )
-        )}
-        <span className="ml-2 text-gray-600 font-medium">({r.toFixed(1)})</span>
-      </div>
-    );
-  };
+  const renderStars = (val: number) => (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((s) =>
+        val >= s ? (
+          <Star key={s} className="h-5 w-5 text-yellow-400" />
+        ) : val > s - 1 ? (
+          <StarHalf key={s} className="h-5 w-5 text-yellow-400" />
+        ) : (
+          <Star key={s} className="h-5 w-5 text-gray-300" />
+        )
+      )}
+      {val > 0 && (
+        <span className="ml-2 text-gray-600 font-medium">
+          ({val.toFixed(1)})
+        </span>
+      )}
+    </div>
+  );
 
-  const handleAddToCart = () => {
-    addToCart(product as any, quantity); // util của bạn; product có đủ id/name/price/image
-    toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng`, {
-      duration: 3000,
-      position: "top-center",
-    });
+  const fileSize = (bytes?: number) => {
+    if (!bytes) return "—";
+    const k = 1024,
+      units = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${units[i]}`;
   };
 
   const download = (url: string, filename: string) => {
@@ -375,11 +350,15 @@ export default function ProductDetailClient({
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    toast.success("Đang tải xuống...", { duration: 2000 });
+    a.remove();
+    toast.success("Đang tải xuống...");
   };
 
-  // ---- UI ----
+  const handleAddToCart = () => {
+    addToCart(product, quantity);
+    toast.success(`Đã thêm ${quantity} sản phẩm vào giỏ hàng`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Toaster />
@@ -404,7 +383,7 @@ export default function ProductDetailClient({
         </div>
       </nav>
 
-      {/* Debug (chỉ dev) */}
+      {/* Debug (dev only) */}
       {process.env.NODE_ENV === "development" && (
         <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="font-semibold text-blue-900 mb-2">🔧 Debug Info</h3>
@@ -416,7 +395,7 @@ export default function ProductDetailClient({
               <strong>SlugURL:</strong> {product.SlugURL || "null"}
             </p>
             <p>
-              <strong>Correct URL:</strong> {getProductUrl(product as any)}
+              <strong>URL:</strong> {getProductUrl(product as any)}
             </p>
           </div>
         </div>
@@ -435,13 +414,15 @@ export default function ProductDetailClient({
               onMouseEnter={() => setShowMagnifier(true)}
               onMouseLeave={() => setShowMagnifier(false)}
             >
-              <Image
-                src={images[currentImageIndex]?.url || "/placeholder.svg"}
-                alt={`${product.name} - Image ${currentImageIndex + 1}`}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+              {images[0] && (
+                <Image
+                  src={images[currentImageIndex]?.url || "/placeholder.svg"}
+                  alt={`${product.name} - Image ${currentImageIndex + 1}`}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              )}
 
               {images.length > 1 && (
                 <>
@@ -529,16 +510,14 @@ export default function ProductDetailClient({
 
             {/* Rating / Stats */}
             <div className="flex items-center gap-6 mb-6 pb-6 border-b border-gray-100">
-              {renderStars(rating)}
-              {typeof product.bought === "number" && (
+              {rating > 0 && renderStars(rating)}
+              {typeof product.bought === "number" && product.bought > 0 && (
                 <div className="text-gray-600">
                   <span className="font-medium">{product.bought}</span> đã bán
                 </div>
               )}
             </div>
 
-
-              
             {/* Price */}
             <div className="mb-8">
               {typeof original === "number" &&
@@ -548,14 +527,16 @@ export default function ProductDetailClient({
                     <p className="text-lg text-gray-500 line-through">
                       {toCurrency(original)}
                     </p>
-                    <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-bold">
-                      -{discountPct}%
-                    </span>
+                    {discountPct && discountPct > 0 && (
+                      <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-bold">
+                        -{discountPct}%
+                      </span>
+                    )}
                   </div>
                 )}
 
               <p className="text-4xl font-bold text-red-600 mb-2">
-                {typeof price === "number" ? toCurrency(price) : "Liên hệ"}
+                {toCurrency(price)}
               </p>
             </div>
 
@@ -734,7 +715,7 @@ export default function ProductDetailClient({
 
         {documents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {documents.map((doc, i) => (
+            {documents.map((doc: any, i: number) => (
               <div
                 key={i}
                 className="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all hover:border-red-200"
@@ -812,33 +793,6 @@ export default function ProductDetailClient({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Technical Specs */}
-      <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-        <h2 className="text-2xl font-bold mb-6">Thông số kỹ thuật</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <tbody className="divide-y divide-gray-100">
-              <tr className="hover:bg-gray-50">
-                <td className="py-4 text-gray-600 font-medium">Mã sản phẩm</td>
-                <td className="py-4 font-semibold">
-                  {(product as any).productID || "N/A"}
-                </td>
-              </tr>
-              <tr className="hover:bg-gray-50">
-                <td className="py-4 text-gray-600 font-medium">Thương hiệu</td>
-                <td className="py-4 font-semibold">{product.brand || "N/A"}</td>
-              </tr>
-              <tr className="hover:bg-gray-50">
-                <td className="py-4 text-gray-600 font-medium">Xuất xứ</td>
-                <td className="py-4 font-semibold">
-                  {product.origin || "N/A"}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
 
       {/* Description */}
