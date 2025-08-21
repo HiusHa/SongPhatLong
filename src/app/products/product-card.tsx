@@ -11,7 +11,15 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   // ✅ SỬ DỤNG FUNCTION THÔNG MINH để tạo URL
   const productUrl = getProductUrl(product);
-
+  // const pct =
+  //   typeof product.pricing === "number" &&
+  //   typeof product.originalPrice === "number" &&
+  //   product.originalPrice > product.pricing
+  //     ? Math.round(
+  //         ((product.originalPrice - product.pricing) / product.originalPrice) *
+  //           100
+  //       )
+  //     : null;
   console.log(`🔗 ProductCard URL for ${product.name}:`, productUrl);
   console.log(`🏷️  SlugURL:`, product.SlugURL);
 
@@ -122,19 +130,21 @@ export default function ProductCard({ product }: ProductCardProps) {
           <div className="space-y-2">
             {product.originalPrice && (
               <p className="text-sm text-gray-500 line-through">
-                {product.originalPrice.toLocaleString("vi-VN")}₫
+                {Number(product.originalPrice).toLocaleString("vi-VN")}₫
               </p>
             )}
             <div className="flex items-center justify-between">
               <p className="text-2xl font-bold text-red-600">
-                {product.pricing.toLocaleString("vi-VN")}₫
+                {product.pricing
+                  ? Number(product.pricing).toLocaleString("vi-VN") + "₫"
+                  : "Liên hệ"}
               </p>
-              {product.originalPrice && (
+              {product.originalPrice && product.pricing && (
                 <span className="text-sm bg-red-100 text-red-600 px-2 py-1 rounded font-medium">
                   -
                   {Math.round(
-                    ((product.originalPrice - product.pricing) /
-                      product.originalPrice) *
+                    ((Number(product.originalPrice) - Number(product.pricing)) /
+                      Number(product.originalPrice)) *
                       100
                   )}
                   %

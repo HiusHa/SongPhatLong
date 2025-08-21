@@ -1,27 +1,23 @@
 interface ImageFormat {
   ext: string;
   url: string;
-  hash: string;
-  mime: string;
-  name: string;
-  path: null;
-  size: number;
   width: number;
   height: number;
+  size?: number;
 }
 
 export interface ProductImage {
   id: number;
-  documentId: string;
-  name: string;
-  alternativeText: string | null;
-  caption: string | null;
-  width: number;
-  height: number;
-  formats: {
-    small: ImageFormat;
-    medium: ImageFormat;
-    thumbnail: ImageFormat;
+  url: string;
+  alternativeText?: string | null;
+  caption?: string | null;
+  width?: number;
+  height?: number;
+  formats?: {
+    small?: ImageFormat;
+    medium?: ImageFormat;
+    large?: ImageFormat;
+    thumbnail?: ImageFormat;
   };
   hash: string;
   ext: string;
@@ -33,7 +29,6 @@ export interface ProductImage {
   createdAt: string;
   updatedAt: string;
   publishedAt: string;
-  url: string;
 }
 
 export interface ProductVideo {
@@ -91,30 +86,20 @@ export interface Category {
 }
 
 // Update the text node interface to include bold and italic properties
-interface TextNode {
-  text: string;
-  type: string;
-  bold?: boolean;
-  italic?: boolean;
-  underline?: boolean;
-}
 
 export interface StrapiProduct {
   id: number;
   documentId: string;
   SlugURL?: string | null; // Slug field từ Strapi - có thể null
   name: string;
-  description: Array<{
-    type: string;
-    children: TextNode[];
-  }>;
+  description?: unknown;
   pricing: number;
   originalPrice?: number;
   createdAt: string;
   productID: string | null;
   updatedAt: string;
   publishedAt: string;
-  image: ProductImage;
+  image?: ProductImage | null;
   image2: ProductImage[] | ProductImage | null;
   image3: ProductImage[] | ProductImage | null;
   image4: ProductImage[] | ProductImage | null;

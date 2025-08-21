@@ -27,6 +27,9 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+const safeKey = (p: StrapiProduct, i: number) =>
+  String(p.id ?? p.documentId ?? p.SlugURL ?? p.name ?? i) + "-" + i;
+
 export function ProductGrid({
   selectedCategories,
   searchQuery,
@@ -97,8 +100,8 @@ export function ProductGrid({
       animate="visible"
       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
     >
-      {filteredProducts.map((product) => (
-        <motion.div key={product.documentId} variants={itemVariants}>
+      {filteredProducts.map((product, index) => (
+        <motion.div key={safeKey(product, index)} variants={itemVariants}>
           <ProductCard product={product} />
         </motion.div>
       ))}
